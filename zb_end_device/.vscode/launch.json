@@ -1,0 +1,31 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "preLaunchTask": "preRun",
+      "name": "ESP32-C6 OpenOCD",
+      "type": "cppdbg",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/build",
+      "program": "${workspaceFolder}/build/${workspaceFolderBasename}.elf",
+      "miDebuggerPath": "C:/Espressif/tools/riscv32-esp-elf-gdb/12.1_20221002/riscv32-esp-elf-gdb/bin/riscv32-esp-elf-gdb.exe",
+      "setupCommands": [
+        { "text": "target extended-remote 127.0.0.1:3333" },
+        { "text": "set remote hardware-watchpoint-limit 4" },
+        { "text": "monitor reset halt" },
+        { "text": "flushregs" },
+        {
+          "text": "mon program_esp build/bootloader/bootloader.bin 0x0 verify"
+        },
+        {
+          "text": "mon program_esp build/partition_table/partition-table.bin 0x8000 verify"
+        },
+        {
+          "text": "mon program_esp build/${workspaceFolderBasename}.bin 0x10000 verify"
+        },
+        { "text": "monitor reset halt" },
+        { "text": "flushregs" }
+      ]
+    }
+  ]
+}

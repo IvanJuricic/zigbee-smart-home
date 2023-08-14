@@ -1,0 +1,12 @@
+{
+  "C_Cpp.intelliSenseEngine": "default",
+  "idf.adapterTargetName": "esp32c6",
+  "idf.openOcdConfigs": ["board/esp32-bridge.cfg"],
+  "idf.portWin": "COM16",
+  "idf.flashType": "UART",
+  "git.ignoreLimitWarning": true,
+  "files.associations": {
+    "zigbee_server_main.h": "c",
+    "switch_driver.h": "c"
+  }
+}
