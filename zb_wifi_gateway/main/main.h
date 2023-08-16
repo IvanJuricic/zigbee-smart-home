@@ -51,5 +51,9 @@
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
+#define INITIAL_MESSAGE "Hello from ESP32"
+#define CONNECTED_MESSAGE "Connected to server"
+#define TOGGLE_MESSAGE "Toggle light"
+
 int wifi_init_sta(void);
 void tcp_client_task(void *pvParameters);
