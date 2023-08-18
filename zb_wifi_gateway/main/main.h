@@ -9,9 +9,9 @@
 #include "nvs_flash.h"
 #include "esp_netif.h"
 
-#include "lwip/sockets.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"
+#include "mqtt_client.h"
 
 #define EXAMPLE_ESP_WIFI_SSID      CONFIG_ESP_WIFI_SSID
 #define EXAMPLE_ESP_WIFI_PASS      CONFIG_ESP_WIFI_PASSWORD
@@ -56,4 +56,6 @@
 #define TOGGLE_MESSAGE "Toggle light"
 
 int wifi_init_sta(void);
-void tcp_client_task(void *pvParameters);
+static void mqtt_app_start(void);
+static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
+static void log_error_if_nonzero(const char *message, int error_code);

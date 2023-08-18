@@ -2,6 +2,11 @@
 
 static const char *TAG = "Zigbee-Wifi Gateway";
 
+bool lights = 0;
+
+esp_mqtt_event_handle_t event;
+esp_mqtt_client_handle_t client;
+
 void app_main(void)
 {
     //Initialize NVS
@@ -17,88 +22,102 @@ void app_main(void)
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_status = wifi_init_sta();
     if(wifi_status) {
-        xTaskCreate(tcp_client_task, "tcp_client", 4096, NULL, 5, NULL);
+        ESP_ERROR_CHECK(esp_netif_init());
+        //ESP_ERROR_CHECK(esp_event_loop_create_default());
+        mqtt_app_start();
     } else if(wifi_status == -1) {
         ESP_LOGI(TAG, "Error connecting to wifi!\n");
     }
 }
 
-void tcp_client_task(void *pvParameters) {
+/*
+ * @brief Event handler registered to receive MQTT events
+ *
+ *  This function is called by the MQTT client event loop.
+ *
+ * @param handler_args user data registered to the event.
+ * @param base Event base for the handler(always MQTT Base in this example).
+ * @param event_id The id for the received event.
+ * @param event_data The data for the event, esp_mqtt_event_handle_t.
+ */
+static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
+{
+    ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
+    event = event_data;
+    client = event->client;
+    int msg_id;
+    switch ((esp_mqtt_event_id_t)event_id) {
+    case MQTT_EVENT_CONNECTED:
+        ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
+        //msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
+        //ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
 
-    struct sockaddr_in dest_addr;
-    dest_addr.sin_addr.s_addr = inet_addr("192.168.1.10"); // Replace with your server's local IP address
-    dest_addr.sin_family = AF_INET;
-    dest_addr.sin_port = htons(12345); // Replace with your server port
+        msg_id = esp_mqtt_client_subscribe(client, "test/topic", 0);
+        ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
-    int sock, recv_len;
-    char recv_buf[64];
-    
-    int recv_timeout = 5000;
-    struct timeval timeout;
-    timeout.tv_sec = recv_timeout / 1000;
-    timeout.tv_usec = (recv_timeout % 1000) * 1000;
+        //msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 1);
+        //ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
-    ESP_LOGI(TAG, "Initializing socket connection....!\n");
+        //msg_id = esp_mqtt_client_unsubscribe(client, "test/topic");
+        //ESP_LOGI(TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
+        break;
+    case MQTT_EVENT_DISCONNECTED:
+        ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
+        break;
 
-    while(1) {
-        sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-        if (sock < 0) {
-            ESP_LOGE(TAG, "Failed to create socket");
-            continue;
+    case MQTT_EVENT_SUBSCRIBED:
+        ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
+        /*msg_id = esp_mqtt_client_publish(client, "/topic/qos0", "data", 0, 0, 0);
+        ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);*/
+        break;
+    case MQTT_EVENT_UNSUBSCRIBED:
+        ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
+        break;
+    case MQTT_EVENT_PUBLISHED:
+        ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
+        break;
+    case MQTT_EVENT_DATA:
+        //ESP_LOGI(TAG, "MQTT_EVENT_DATA");
+        //printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
+        //printf("DATA=%.*s\r\n", event->data_len, event->data);
+        //printf("CMP = %d\n", strcmp("Toggle!", event->data));
+        //printf("Data => %s\nData len = %d\n", event->data, event->data_len);
+        if(strncmp("test/topic", event->topic, event->topic_len - 1) == 0 && strncmp("Toggle!", event->data, event->data_len - 1) == 0) {
+            esp_mqtt_client_publish(client, "test", (!lights ? "ON" : "OFF"), 0, 0, 0);
+            lights = !(lights);
         }
+        break;
+    case MQTT_EVENT_ERROR:
+        ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
+        if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT) {
+            log_error_if_nonzero("reported from esp-tls", event->error_handle->esp_tls_last_esp_err);
+            log_error_if_nonzero("reported from tls stack", event->error_handle->esp_tls_stack_err);
+            log_error_if_nonzero("captured as transport's socket errno",  event->error_handle->esp_transport_sock_errno);
+            ESP_LOGI(TAG, "Last errno string (%s)", strerror(event->error_handle->esp_transport_sock_errno));
 
-        ESP_LOGI(TAG, "Socket created!\n");
-
-        // Set the receive timeout
-        if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
-            ESP_LOGE(TAG, "Failed to set receive timeout");
-            // Handle error
         }
-
-        if (connect(sock, (struct sockaddr *)&dest_addr, sizeof(struct sockaddr_in)) != 0) {
-            ESP_LOGE(TAG, "Socket connection failed");
-            close(sock);
-            continue;
-        }
-
-        ESP_LOGI(TAG, "Socket created and connected!!!\n");
+        break;
+    default:
+        ESP_LOGI(TAG, "Other event id:%d", event->event_id);
         break;
     }
+}
 
-    while(1) {
-        send(sock, INITIAL_MESSAGE, strlen(INITIAL_MESSAGE), 0);
-        ESP_LOGI(TAG, "Data sent to server: %s", INITIAL_MESSAGE);
-        recv_len = recv(sock, recv_buf, sizeof(recv_buf) - 1, 0);
-        if (recv_len > 0) {
-            //recv_buf[recv_len] = '\0';
-            if(strcmp(recv_buf, CONNECTED_MESSAGE) == 0) {
-                ESP_LOGI(TAG, "Received from server: %s", recv_buf);
-                break;
-            }
-        }
+static void mqtt_app_start(void)
+{
+    esp_mqtt_client_config_t mqtt_cfg = {
+        .broker.address.uri = "mqtt://192.168.1.10:1883",
+    };
 
-        ESP_LOGI(TAG, "Not connected, trying again!\n");
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
+    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+    /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
+    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
+    esp_mqtt_client_start(client);
+}
+
+static void log_error_if_nonzero(const char *message, int error_code)
+{
+    if (error_code != 0) {
+        ESP_LOGE(TAG, "Last error %s: 0x%x", message, error_code);
     }
-
-    ESP_LOGI(TAG, "Connected to server!\n");
-    ESP_LOGI(TAG, "Waiting for commands!\n");
-
-    while (1) {
-        //const char *data = "Hello, server from esp32 hahahaha!";
-        //send(sock, data, strlen(data), 0);
-        //ESP_LOGI(TAG, "Data sent to server: %s", data);
-
-        recv_len = recv(sock, recv_buf, sizeof(recv_buf) - 1, 0);
-        if (recv_len > 0) {
-            recv_buf[recv_len] = '\0';
-            ESP_LOGI(TAG, "Received from server: %s", recv_buf);
-            if(strcmp(recv_buf, TOGGLE_MESSAGE) == 0) {
-                ESP_LOGI(TAG, "Toggling light");
-            }
-        }
-
-    }
-
-    close(sock);
 }
