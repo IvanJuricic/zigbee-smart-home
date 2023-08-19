@@ -13,6 +13,9 @@
 #include "lwip/sys.h"
 #include "mqtt_client.h"
 
+#include "driver/uart.h"
+#include "driver/gpio.h"
+
 #define EXAMPLE_ESP_WIFI_SSID      CONFIG_ESP_WIFI_SSID
 #define EXAMPLE_ESP_WIFI_PASS      CONFIG_ESP_WIFI_PASSWORD
 #define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
@@ -55,7 +58,12 @@
 #define CONNECTED_MESSAGE "Connected to server"
 #define TOGGLE_MESSAGE "Toggle light"
 
+#define TXD_PIN (GPIO_NUM_4)
+#define RXD_PIN (GPIO_NUM_5)
+#define BUF_SIZE (1024)
+
 int wifi_init_sta(void);
 static void mqtt_app_start(void);
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
 static void log_error_if_nonzero(const char *message, int error_code);
+void uart_task(void *pvParameters);

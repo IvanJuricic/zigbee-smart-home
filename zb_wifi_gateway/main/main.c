@@ -7,6 +7,8 @@ bool lights = 0;
 esp_mqtt_event_handle_t event;
 esp_mqtt_client_handle_t client;
 
+uint8_t data[BUF_SIZE];
+
 void app_main(void)
 {
     //Initialize NVS
@@ -23,10 +25,37 @@ void app_main(void)
     wifi_status = wifi_init_sta();
     if(wifi_status) {
         ESP_ERROR_CHECK(esp_netif_init());
-        //ESP_ERROR_CHECK(esp_event_loop_create_default());
         mqtt_app_start();
+        xTaskCreate(uart_task, "uart_task", 4096, NULL, 5, NULL);
     } else if(wifi_status == -1) {
         ESP_LOGI(TAG, "Error connecting to wifi!\n");
+    }
+}
+
+void uart_task(void *pvParameters) {
+    uart_config_t uart_config = {
+        .baud_rate = 115200,
+        .data_bits = UART_DATA_8_BITS,
+        .parity    = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_DEFAULT,
+    };
+
+    int intr_alloc_flags = 0;
+
+    ESP_ERROR_CHECK(uart_driver_install(UART_NUM_2, BUF_SIZE * 2, 0, 0, NULL, intr_alloc_flags));
+    ESP_ERROR_CHECK(uart_param_config(UART_NUM_2, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(UART_NUM_2, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+
+    for(;;) {
+        int len = uart_read_bytes(UART_NUM_2, data, (BUF_SIZE - 1), 20 / portTICK_PERIOD_MS);
+        // Write data back to the UART
+        uart_write_bytes(UART_NUM_2, (const char *) data, len);
+        if (len) {
+            data[len] = '\0';
+            ESP_LOGI(TAG, "Recv str: %s", (char *) data);
+        }
     }
 }
 
@@ -85,6 +114,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         if(strncmp("test/topic", event->topic, event->topic_len - 1) == 0 && strncmp("Toggle!", event->data, event->data_len - 1) == 0) {
             esp_mqtt_client_publish(client, "test", (!lights ? "ON" : "OFF"), 0, 0, 0);
             lights = !(lights);
+            uart_write_bytes(UART_NUM_2, (const char *) "Toggle!\0", strlen("Toggle!\0"));
         }
         break;
     case MQTT_EVENT_ERROR:
