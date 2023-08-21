@@ -49,13 +49,13 @@ void uart_task(void *pvParameters) {
     ESP_ERROR_CHECK(uart_set_pin(UART_NUM_2, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 
     for(;;) {
-        int len = uart_read_bytes(UART_NUM_2, data, (BUF_SIZE - 1), 20 / portTICK_PERIOD_MS);
+        //int len = uart_read_bytes(UART_NUM_2, data, (BUF_SIZE - 1), 20 / portTICK_PERIOD_MS);
         // Write data back to the UART
-        uart_write_bytes(UART_NUM_2, (const char *) data, len);
+        /*uart_write_bytes(UART_NUM_2, (const char *) data, len);
         if (len) {
             data[len] = '\0';
             ESP_LOGI(TAG, "Recv str: %s", (char *) data);
-        }
+        }*/
     }
 }
 
