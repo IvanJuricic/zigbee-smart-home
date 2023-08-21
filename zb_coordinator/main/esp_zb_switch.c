@@ -41,6 +41,14 @@
 #include "ha/esp_zigbee_ha_standard.h"
 #include "esp_zb_switch.h"
 #include "nvs_flash.h"
+#include <string.h>
+
+#include "driver/uart.h"
+#include "driver/gpio.h"
+
+#define TXD_PIN (GPIO_NUM_16)
+#define RXD_PIN (GPIO_NUM_17)
+#define BUF_SIZE (1024)
 
 /**
  * @note Make sure set idf.py menuconfig in zigbee component as zigbee coordinator device!
@@ -65,6 +73,8 @@ static const char *TAG = "ESP_ZB_ON_OFF_SWITCH";
 /* remote device struct for recording and managing node info */
 light_bulb_device_params_t on_off_light[5];
 int num_devices = 0;
+
+uint8_t data[BUF_SIZE];
 /********************* Define functions **************************/
 
 /**
@@ -173,10 +183,45 @@ static void esp_zb_task(void *pvParameters)
     esp_zb_main_loop_iteration();
 }
 
+static void toggle_lights() {
+    esp_zb_zcl_on_off_cmd_t cmd_req;
+    ESP_EARLY_LOGI(TAG, "send 'on_off toggle' command");
+    for(int i = 0; i < num_devices; i++) {
+        cmd_req.zcl_basic_cmd.dst_addr_u.addr_short = on_off_light[i].short_addr;
+        cmd_req.zcl_basic_cmd.dst_endpoint = on_off_light[i].endpoint;
+        cmd_req.zcl_basic_cmd.src_endpoint = HA_ONOFF_SWITCH_ENDPOINT;
+        cmd_req.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
+        cmd_req.on_off_cmd_id = ESP_ZB_ZCL_CMD_ON_OFF_TOGGLE_ID;
+        esp_zb_zcl_on_off_cmd_req(&cmd_req);
+    }
+}
+
 static void esp_zb_check_network(void *pvParameters) {
+    uart_config_t uart_config = {
+        .baud_rate = 115200,
+        .data_bits = UART_DATA_8_BITS,
+        .parity    = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_DEFAULT,
+    };
+
+    int intr_alloc_flags = 0;
+
+    ESP_ERROR_CHECK(uart_driver_install(UART_NUM_0, BUF_SIZE * 2, 0, 0, NULL, intr_alloc_flags));
+    ESP_ERROR_CHECK(uart_param_config(UART_NUM_0, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(UART_NUM_0, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    
     for(;;) {
-        printf("tu smo");
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        int len = uart_read_bytes(UART_NUM_0, data, (BUF_SIZE - 1), 20 / portTICK_PERIOD_MS);
+        if (len) {
+            data[len] = '\0';
+            ESP_LOGI(TAG, "Recv str: %s", (char *) data);
+            if(strcmp("Toggle!\0", (const char *)data) == 0) {
+                toggle_lights();
+            }
+        }
+        //vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
 
