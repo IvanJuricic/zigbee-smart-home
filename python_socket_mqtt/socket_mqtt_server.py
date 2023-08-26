@@ -16,6 +16,15 @@ MQTT_BROKER_PORT = 1883
 socket_to_mqtt_queue = queue.Queue(maxsize=1)
 mqtt_to_socket_queue = queue.Queue(maxsize=1)
 
+# Dictionary to keep track of authorized clients
+AUTHORIZED_CLIENTS = {}  # {client_ip: client_token}
+secret = AUTH_SECRET
+
+# Function to validate the token
+def is_valid_token(token):
+    # Return True if the token is valid, False otherwise
+    return token == secret
+
 # Create a socket server thread
 def socket_server_thread():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -27,24 +36,48 @@ def socket_server_thread():
     while True:
         client_socket, client_address = server_socket.accept()
         print("Connected by:", client_address)
-        client_thread = threading.Thread(target=handle_client, args=(client_socket,))
+        client_thread = threading.Thread(target=handle_client, args=(client_socket, client_address,))
         client_thread.start()
 
-def handle_client(client_socket):
-    while True:
+def handle_client(client_socket, client_address):
+    try:
         data = client_socket.recv(1024).decode()
-        if not data:
-            break
-        print("Received from client:", data)
-        # Process the data and send response if needed
-        #response = "pozdrav brate"
-        if "Toggle!" in data:
-            socket_to_mqtt_queue.put(data)
-        else:
-            continue
+        
+        if data.startswith(SECRET_START):
+            token = data[len(SECRET_START):-1]
+            if is_valid_token(token):
+                print("Authorized connection from:", client_address)
+                AUTHORIZED_CLIENTS[client_address[0]] = token
+                response = "Authorized!"
+                client_socket.sendall(response.encode())
+            else:
+                print("Invalid token. Closing connection from:", client_address)
+                client_socket.close()
+                return
+        
+        if client_address[0] not in AUTHORIZED_CLIENTS:
+            print("Unauthorized connection attempt from:", client_address)
+            client_socket.close()
+            return
+        
+        while True:
+            data = client_socket.recv(1024).decode()
+            if not data:
+                break
+            print("Received from client:", data)
             
-        response = mqtt_to_socket_queue.get()
-        client_socket.sendall(response.encode())
+            if "Toggle!" in data:
+                socket_to_mqtt_queue.put(data)
+            else:
+                continue
+                
+            response = mqtt_to_socket_queue.get()
+            client_socket.sendall(response.encode())
+    except Exception as e:
+        print("Error handling client:", str(e))
+    finally:
+        print("Closing client connection.")
+        client_socket.close()
 
 # Create an MQTT client thread
 def mqtt_client_thread():
@@ -64,16 +97,16 @@ def mqtt_client_thread():
     mqtt_client.loop_start()
 
     # Subscribe to the topic(s) you're interested in
-    mqtt_client.subscribe("test")
+    mqtt_client.subscribe("topic/lights/feedback")
     
     while True:
-        print("Waiting for client messages")
+        #print("Waiting for client messages")
         message = socket_to_mqtt_queue.get()
         # Process the message and generate a response
         print(f"Received message from client: {message}")
         # Put the response back into the message queue
         #message_queue.put(response)
-        mqtt_client.publish("test/topic", message)
+        mqtt_client.publish("topic/lights/toggle", message)
 
 if __name__ == '__main__':
     socket_thread = threading.Thread(target=socket_server_thread)
