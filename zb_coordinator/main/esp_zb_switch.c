@@ -178,6 +178,7 @@ static void esp_zb_task(void *pvParameters)
     esp_zb_on_off_switch_cfg_t switch_cfg = ESP_ZB_DEFAULT_ON_OFF_SWITCH_CONFIG();
     esp_zb_ep_list_t *esp_zb_on_off_switch_ep = esp_zb_on_off_switch_ep_create(HA_ONOFF_SWITCH_ENDPOINT, &switch_cfg);
     esp_zb_device_register(esp_zb_on_off_switch_ep);
+
     esp_zb_set_primary_network_channel_set(ESP_ZB_PRIMARY_CHANNEL_MASK);
     ESP_ERROR_CHECK(esp_zb_start(false));
     esp_zb_main_loop_iteration();
@@ -196,7 +197,7 @@ static void toggle_lights() {
     }
 }
 
-static void esp_zb_check_network(void *pvParameters) {
+static void esp_check_toggle_req(void *pvParameters) {
     uart_config_t uart_config = {
         .baud_rate = 115200,
         .data_bits = UART_DATA_8_BITS,
@@ -237,5 +238,5 @@ void app_main(void)
     /* hardware related and device init */
     switch_driver_init(button_func_pair, PAIR_SIZE(button_func_pair), esp_zb_buttons_handler);
     xTaskCreate(esp_zb_task, "Zigbee_main", 4096, NULL, 5, NULL);
-    xTaskCreate(esp_zb_check_network, "Zigbee_check_network", 4096, NULL, 4, NULL);
+    xTaskCreate(esp_check_toggle_req, "Check_toggle_request", 4096, NULL, 4, NULL);
 }
