@@ -1,6 +1,7 @@
 {
   "files.associations": {
     "main.h": "c",
-    "string.h": "c"
+    "string.h": "c",
+    "gpio.h": "c"
   }
 }

@@ -48,15 +48,7 @@ void uart_task(void *pvParameters) {
     ESP_ERROR_CHECK(uart_param_config(UART_NUM_2, &uart_config));
     ESP_ERROR_CHECK(uart_set_pin(UART_NUM_2, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 
-    for(;;) {
-        //int len = uart_read_bytes(UART_NUM_2, data, (BUF_SIZE - 1), 20 / portTICK_PERIOD_MS);
-        // Write data back to the UART
-        /*uart_write_bytes(UART_NUM_2, (const char *) data, len);
-        if (len) {
-            data[len] = '\0';
-            ESP_LOGI(TAG, "Recv str: %s", (char *) data);
-        }*/
-    }
+    for(;;) { }
 }
 
 /*
@@ -81,7 +73,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         //msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
         //ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
 
-        msg_id = esp_mqtt_client_subscribe(client, "test/topic", 0);
+        msg_id = esp_mqtt_client_subscribe(client, "topic/lights/toggle", 0);
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
         //msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 1);
@@ -111,8 +103,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         //printf("DATA=%.*s\r\n", event->data_len, event->data);
         //printf("CMP = %d\n", strcmp("Toggle!", event->data));
         //printf("Data => %s\nData len = %d\n", event->data, event->data_len);
-        if(strncmp("test/topic", event->topic, event->topic_len - 1) == 0 && strncmp("Toggle!", event->data, event->data_len - 1) == 0) {
-            esp_mqtt_client_publish(client, "test", (!lights ? "ON" : "OFF"), 0, 0, 0);
+        if(strncmp("topic/lights/toggle", event->topic, event->topic_len - 1) == 0 && strncmp("Toggle!", event->data, event->data_len - 1) == 0) {
+            esp_mqtt_client_publish(client, "topic/lights/feedback", (!lights ? "ON" : "OFF"), 0, 0, 0);
             lights = !(lights);
             uart_write_bytes(UART_NUM_2, (const char *) "Toggle!\0", strlen("Toggle!\0"));
         }
@@ -136,7 +128,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 static void mqtt_app_start(void)
 {
     esp_mqtt_client_config_t mqtt_cfg = {
-        .broker.address.uri = "mqtt://192.168.1.10:1883",
+        .broker.address.uri = "mqtt://BROKER_IP_ADDRESS:PORT",
     };
 
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
