@@ -1,13 +1,11 @@
-# Smart Home Project README
+# Smart Home Project
 
 ## Table of Contents
 
 - [Introduction](#introduction)
 - [Features](#features)
-- [Requirements](#requirements)
-- [Usage](#usage)
-- [Contributing](#contributing)
-- [License](#license)
+- [Components](#components)
+- [Demo](#demo)
 
 ## Introduction
 
@@ -16,22 +14,18 @@ Welcome to the Smart Home Project! This project allows you to control your home 
 ## Features
 
 - **Light Control**: Toggle lights on and off remotely using the client app.
+- **More coming soon**
 
-## Requirements
+## Components
 
-Before you begin, ensure you have met the following requirements:
+![Smart Home Components](doc_assets/components.jpg)
 
-- **Smart Home Hardware**: You'll need a compatible smart home lighting system. Ensure your lights are compatible with the project's communication protocol.
-- **Client Device**: You should have a device (e.g., smartphone, tablet) with the client app installed.
+The main goal of this project is to utilize the ESP32-C6's support for Zigbee networks to create an efficient and reliable smart home solution. It aims to leverage the ESP32-C6's capabilities to seamlessly connect and control Zigbee-enabled devices, providing users with enhanced convenience and automation in their homes.
 
-## Usage
+The client app (_smart_home_client_app_) connects to the server (_python_socket_mqtt_) that is running on a Raspberry Pi 3B+, running Raspbian GNU/Linux 11 OS. It listens to client requests using TCP sockets. On the same server there is an instance of a MQTT client which forwards the messages from client to the ESP32 acting as a gateway (_zb_wifi_gateway_). The gateway device then forwards the client messages via UART protocol to Zigbee coordinator(_zb_coordinator_) which creates a Zigbee network and controls Zigbee end devices (_zb_end_device_).
 
-1. Ensure your smart home hardware is properly set up and connected to your network.
+The purpose of the gateway device is to have only Zigbee network running on an ESP32-C6 device because of the potential coexsistence problems when using Wi-Fi and Zigbee at the same time, as ESP32-C6 has only one 2.4 GHz ISM band RF module. These issues were resolved as of [March 2023](https://github.com/espressif/esp-idf/issues/10423), but there still remains a question of performance when having multiple services running.
 
-2. Open the client app on your device.
+## Demo
 
-3. Connect the app to your smart home system by following the on-screen instructions.
-
-4. Use the app to control your lights:
-   - Turn lights on and off.
-   - Adjust brightness (if supported).
+![Smart Home Demo](doc_assets/system_demo.gif)
