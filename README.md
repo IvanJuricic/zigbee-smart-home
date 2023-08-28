@@ -44,3 +44,4 @@ Make sure to match the port in the configuration with the one that is defined in
 ## Demo
 
 ![Smart Home Demo](doc_assets/system_demo.gif)
+_If it is not showing up, wait a bit for it to load_
