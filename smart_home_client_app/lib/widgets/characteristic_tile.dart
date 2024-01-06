@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:math';
-
+import 'dart:convert'; // Add this line for encoding
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import "../utils/snackbar.dart";
-
 import "descriptor_tile.dart";
 
 class CharacteristicTile extends StatefulWidget {
@@ -22,7 +20,6 @@ class CharacteristicTile extends StatefulWidget {
 
 class _CharacteristicTileState extends State<CharacteristicTile> {
   List<int> _value = [];
-
   late StreamSubscription<List<int>> _lastValueSubscription;
 
   @override
@@ -45,16 +42,6 @@ class _CharacteristicTileState extends State<CharacteristicTile> {
 
   BluetoothCharacteristic get c => widget.characteristic;
 
-  List<int> _getRandomBytes() {
-    final math = Random();
-    return [
-      math.nextInt(255),
-      math.nextInt(255),
-      math.nextInt(255),
-      math.nextInt(255)
-    ];
-  }
-
   Future onReadPressed() async {
     try {
       await c.read();
@@ -64,24 +51,52 @@ class _CharacteristicTileState extends State<CharacteristicTile> {
     }
   }
 
-  Future onWritePressed() async {
-    try {
-      await c.write(_getRandomBytes(),
-          withoutResponse: c.properties.writeWithoutResponse);
-      Snackbar.show(ABC.c, "Write: Success", success: true);
-      if (c.properties.read) {
-        await c.read();
+  Future<void> onWritePressed() async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        TextEditingController inputController = TextEditingController();
+        return AlertDialog(
+          title: Text('Enter String to Send'),
+          content: TextField(
+            controller: inputController,
+            decoration: InputDecoration(hintText: "Enter string"),
+            keyboardType: TextInputType.text,
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Send'),
+              onPressed: () {
+                Navigator.of(context).pop(inputController.text);
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result != null && result.isNotEmpty) {
+      try {
+        // Convert string to bytes using UTF-8 encoding
+        List<int> bytes = utf8.encode(result);
+        await c.write(bytes,
+            withoutResponse: c.properties.writeWithoutResponse);
+        Snackbar.show(ABC.c, "Write: Success", success: true);
+        if (c.properties.read) {
+          await c.read();
+        }
+      } catch (e) {
+        Snackbar.show(ABC.c, prettyException("Write Error:", e),
+            success: false);
       }
-    } catch (e) {
-      Snackbar.show(ABC.c, prettyException("Write Error:", e), success: false);
     }
   }
 
   Future onSubscribePressed() async {
     try {
-      String op = c.isNotifying == false ? "Subscribe" : "Unubscribe";
+      String op = c.isNotifying == false ? "Subscribe" : "Unsubscribe";
       await c.setNotifyValue(c.isNotifying == false);
-      Snackbar.show(ABC.c, "$op : Success", success: true);
+      Snackbar.show(ABC.c, "$op: Success", success: true);
       if (c.properties.read) {
         await c.read();
       }
