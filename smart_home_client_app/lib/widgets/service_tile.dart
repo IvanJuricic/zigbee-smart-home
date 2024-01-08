@@ -30,7 +30,7 @@ class ServiceTile extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Service UUID: $uuid', style: TextStyle(fontSize: 13)),
+        Text('Ivanovic UUID: $uuid', style: TextStyle(fontSize: 13)),
         Text('Name: $name', style: TextStyle(fontSize: 13, color: Colors.teal)),
       ],
     );

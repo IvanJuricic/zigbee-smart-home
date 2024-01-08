@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'dart:developer';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import '../widgets/service_tile.dart';
@@ -24,6 +26,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
   BluetoothConnectionState _connectionState =
       BluetoothConnectionState.disconnected;
   List<BluetoothService> _services = [];
+  List<BluetoothCharacteristic> _characteristics = [];
   bool _isDiscoveringServices = false;
   bool _isConnecting = false;
   bool _isDisconnecting = false;
@@ -34,8 +37,11 @@ class _DeviceScreenState extends State<DeviceScreen> {
   late StreamSubscription<bool> _isDisconnectingSubscription;
   late StreamSubscription<int> _mtuSubscription;
 
+  final _ssidController = TextEditingController();
+  final _passwordController = TextEditingController();
+
   @override
-  void initState() {
+  void initState()  {
     super.initState();
 
     _connectionStateSubscription =
@@ -43,6 +49,9 @@ class _DeviceScreenState extends State<DeviceScreen> {
       _connectionState = state;
       if (state == BluetoothConnectionState.connected) {
         _services = []; // must rediscover services
+        Future.microtask(() async {
+          await onDiscoverServicesPressed();
+        });
       }
       if (state == BluetoothConnectionState.connected && _rssi == null) {
         _rssi = await widget.device.readRssi();
@@ -73,6 +82,8 @@ class _DeviceScreenState extends State<DeviceScreen> {
         setState(() {});
       }
     });
+
+
   }
 
   @override
@@ -82,6 +93,45 @@ class _DeviceScreenState extends State<DeviceScreen> {
     _isConnectingSubscription.cancel();
     _isDisconnectingSubscription.cancel();
     super.dispose();
+  }
+
+  Future _sendCredentials() async {
+    String ssid = _ssidController.text;
+    String password = _passwordController.text;
+
+    // Combine SSID and password, you might want a specific protocol or format
+    String combinedCredentials = '$ssid:$password';
+    // Convert the credentials to bytes and send them over the characteristic
+    if (ssid.isNotEmpty && password.isNotEmpty) {
+      try {
+        for (BluetoothCharacteristic c in _characteristics) {
+          // Check if the characteristic's UUID is for the SSID
+          if (c.uuid.toString().toUpperCase() == "3B40") {
+            List<int> ssidBytes = utf8.encode(ssid); // Convert SSID to bytes
+            await c.write(ssidBytes, withoutResponse: c.properties.writeWithoutResponse);
+            log("SSID sent successfully");
+          }
+          // Check if the characteristic's UUID is for the password
+          else if (c.uuid.toString().toUpperCase() == "4240") {
+            List<int> passwordBytes = utf8.encode(password); // Convert password to bytes
+            await c.write(passwordBytes, withoutResponse: c.properties.writeWithoutResponse);
+            log("Password sent successfully");
+          }
+        }
+
+        Snackbar.show(ABC.c, "Credentials sent: Success", success: true);
+
+      } catch (e) {
+        Snackbar.show(ABC.c, prettyException("Write Error:", e),
+            success: false);
+      }
+    }
+
+    // Clear the text fields
+    _ssidController.clear();
+    _passwordController.clear();
+
+    // Optionally, add logic to confirm the credentials were sent successfully
   }
 
   bool get isConnected {
@@ -129,7 +179,33 @@ class _DeviceScreenState extends State<DeviceScreen> {
       });
     }
     try {
+      log("TUUUU SMOOOOO");
       _services = await widget.device.discoverServices();
+      // Define the UUID you are interested in
+      String targetUuid = "2b36";
+
+      // Filter services to only include the ones with the target UUID
+      List<BluetoothService> filteredServices = _services
+          .where((service) => service.uuid.toString().toLowerCase().contains(targetUuid))
+          .toList();
+
+      // Initialize an empty list to hold all characteristics from the filtered services
+      List<BluetoothCharacteristic> allCharacteristics = [];
+
+      // Iterate through all filtered services to extract characteristics
+      for (BluetoothService service in filteredServices) {
+        // Add all characteristics from the current service to the list
+        allCharacteristics.addAll(service.characteristics);
+      }
+
+      // Update the _characteristics variable with the extracted characteristics
+      setState(() {
+        _services = filteredServices;
+        _characteristics = allCharacteristics;
+      });
+
+      log("Services: $_services");
+      log("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAservices: $widget");
       Snackbar.show(ABC.c, "Discover Services: Success", success: true);
     } catch (e) {
       Snackbar.show(ABC.c, prettyException("Discover Services Error:", e),
@@ -255,6 +331,30 @@ class _DeviceScreenState extends State<DeviceScreen> {
     ]);
   }
 
+  Widget buildWifiCredentials(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        TextFormField(
+          controller: _ssidController,
+          decoration: InputDecoration(labelText: 'WiFi SSID'),
+        ),
+        TextFormField(
+          controller: _passwordController,
+          decoration: InputDecoration(labelText: 'Password'),
+          obscureText: true, // Use this to obscure password input
+        ),
+        ElevatedButton(
+          onPressed: () {
+            if (_ssidController.text.isNotEmpty && _passwordController.text.isNotEmpty) {
+              _sendCredentials();
+            }
+          },
+          child: Text('Send'),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ScaffoldMessenger(
@@ -267,15 +367,17 @@ class _DeviceScreenState extends State<DeviceScreen> {
         body: SingleChildScrollView(
           child: Column(
             children: <Widget>[
-              buildRemoteId(context),
-              ListTile(
-                leading: buildRssiTile(context),
-                title: Text(
-                    'Device is ${_connectionState.toString().split('.')[1]}.'),
-                trailing: buildGetServices(context),
-              ),
-              buildMtuTile(context),
-              ..._buildServiceTiles(context, widget.device),
+              //buildRemoteId(context),
+              // ListTile(
+              //   leading: buildRssiTile(context),
+              //   title: Text(
+              //       'Device is ${_connectionState.toString().split('.')[1]}.'),
+              //   trailing: buildGetServices(context),
+              // ),
+              // buildMtuTile(context),
+              //buildGetServices(context),
+              //..._buildServiceTiles(context, widget.device),
+              buildWifiCredentials(context),
             ],
           ),
         ),

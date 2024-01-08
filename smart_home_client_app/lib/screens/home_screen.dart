@@ -8,9 +8,9 @@ class HomeScreen extends StatelessWidget {
       body: Center(
         child: ElevatedButton(
           onPressed: () {
-            Navigator.of(context).push(MaterialPageRoute(
-              builder: (context) => BluetoothScanScreen(),
-            ));
+            // Navigator.of(context).push(MaterialPageRoute(
+            //   builder: (context) => BluetoothScanScreen(),
+            // ));
           },
           child: Text('Go to Bluetooth Scan'),
         ),
