@@ -1,6 +1,12 @@
 idf_component_register(
     SRCS
-    "esp_zb_switch.c"
-    "switch_driver.c"
-    INCLUDE_DIRS "."
+    "main.c"
+    "zb/esp_zb_switch.c"
+    "util/switch_driver.c"
+    "bt/ble_init.c"
+    "bt/gatt_svr.c"
+    "wifi/wifi_connection.c"
+    INCLUDE_DIRS 
+    "."
+    "../include"
 )

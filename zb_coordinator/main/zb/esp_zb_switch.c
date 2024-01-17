@@ -46,35 +46,6 @@
 #include "driver/uart.h"
 #include "driver/gpio.h"
 
-#include "ble_custom.h"
-#include "wifi_custom.h"
-
-/*
-void app_main() {
-
-    /* Initialize NVS — it is used to store PHY calibration data 
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
-
-    initCredentialsSemaphore();
-
-    init_ble();
-    int wifi_status = 0;
-
-    if(xSemaphoreTake(wifiCredentialsSemaphore, portMAX_DELAY)) {
-        ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-        wifi_status = wifi_init_sta();
-        if(wifi_status) {
-            printf("Wifi connected\n");
-        }
-    }
-}
-*/
-
 #define TXD_PIN (GPIO_NUM_16)
 #define RXD_PIN (GPIO_NUM_17)
 #define BUF_SIZE (1024)
@@ -255,17 +226,17 @@ static void esp_check_toggle_req(void *pvParameters) {
     }
 }
 
-void app_main(void)
+void app_main_zb(void)
 {
     esp_zb_platform_config_t config = {
         .radio_config = ESP_ZB_DEFAULT_RADIO_CONFIG(),
         .host_config = ESP_ZB_DEFAULT_HOST_CONFIG(),
     };
-    ESP_ERROR_CHECK(nvs_flash_init());
+    //ESP_ERROR_CHECK(nvs_flash_init());
     /* load Zigbee switch platform config to initialization */
     ESP_ERROR_CHECK(esp_zb_platform_config(&config));
     /* hardware related and device init */
     switch_driver_init(button_func_pair, PAIR_SIZE(button_func_pair), esp_zb_buttons_handler);
     xTaskCreate(esp_zb_task, "Zigbee_main", 4096, NULL, 5, NULL);
-    xTaskCreate(esp_check_toggle_req, "Check_toggle_request", 4096, NULL, 4, NULL);
+    //xTaskCreate(esp_check_toggle_req, "Check_toggle_request", 4096, NULL, 4, NULL);
 }

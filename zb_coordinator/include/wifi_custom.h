@@ -13,7 +13,7 @@
 
 #define EXAMPLE_ESP_WIFI_SSID      CONFIG_ESP_WIFI_SSID
 #define EXAMPLE_ESP_WIFI_PASS      CONFIG_ESP_WIFI_PASSWORD
-#define EXAMPLE_ESP_MAXIMUM_RETRY  5
+#define EXAMPLE_ESP_MAXIMUM_RETRY  2
 
 #if CONFIG_ESP_WPA3_SAE_PWE_HUNT_AND_PECK
 #define ESP_WIFI_SAE_MODE WPA3_SAE_PWE_HUNT_AND_PECK
@@ -62,8 +62,9 @@ typedef struct {
 extern WifiCredentials wifiCredentials;
 extern SemaphoreHandle_t wifiCredentialsSemaphore;
 
-void initCredentialsSemaphore();
+void init_credentials_semaphore();
+int wifi_init_sta(void);
+void wifi_deinit_sta(void);
+void init_wifi();
 
 #endif /* WIFI_CUSTOM_H */
-
-int wifi_init_sta(void);

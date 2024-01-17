@@ -128,8 +128,8 @@ class _DeviceScreenState extends State<DeviceScreen> {
     }
 
     // Clear the text fields
-    _ssidController.clear();
-    _passwordController.clear();
+    //_ssidController.clear();
+    //_passwordController.clear();
 
     // Optionally, add logic to confirm the credentials were sent successfully
   }
