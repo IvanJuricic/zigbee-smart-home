@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "stdio.h": "c",
+    "wifi_custom.h": "c",
+    "xiosbase": "c"
+  }
+}

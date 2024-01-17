@@ -22,14 +22,14 @@ app_main()
     }
     ESP_ERROR_CHECK(ret);
 
-    init_ble();
-    init_wifi();
-    //init_zb();
+    //init_ble();
+    //init_wifi();
+    app_main_zb();
 
     while(1)
     {
-        ESP_LOGI(TAG, "lasdlk");
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        //ESP_LOGI(TAG, "lasdlk");
+        //vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     // Additional application code goes here
 }
