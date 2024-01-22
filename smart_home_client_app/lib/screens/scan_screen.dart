@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/screens/device_screen.dart';
+import 'package:flutter_application_1/screens/wifi_list_screen.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
-import 'device_screen.dart';
+import '../screens/wifi_list_screen.dart';
 import '../utils/snackbar.dart';
 import '../widgets/system_device_tile.dart';
 import '../widgets/scan_result_tile.dart';
@@ -91,8 +93,8 @@ class _ScanScreenState extends State<ScanScreen> {
           success: false);
     });
     MaterialPageRoute route = MaterialPageRoute(
-        builder: (context) => DeviceScreen(device: device),
-        settings: RouteSettings(name: '/DeviceScreen'));
+        builder: (context) => WifiListScreen(device: device),
+        settings: const RouteSettings(name: '/WifiListScreen'));
     Navigator.of(context).push(route);
   }
 
@@ -126,8 +128,8 @@ class _ScanScreenState extends State<ScanScreen> {
             device: d,
             onOpen: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => DeviceScreen(device: d),
-                settings: RouteSettings(name: '/DeviceScreen'),
+                builder: (context) => WifiListScreen(device: d),
+                settings: const RouteSettings(name: '/WifiListScreen'),
               ),
             ),
             onConnect: () => onConnectPressed(d),

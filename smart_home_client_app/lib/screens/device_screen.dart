@@ -31,8 +31,10 @@ class _DeviceScreenState extends State<DeviceScreen> {
   bool _isConnecting = false;
   bool _isDisconnecting = false;
 
+  List<String> wifiSSIDs = []; // List to store Wi-Fi SSIDs
+
   late StreamSubscription<BluetoothConnectionState>
-      _connectionStateSubscription;
+  _connectionStateSubscription;
   late StreamSubscription<bool> _isConnectingSubscription;
   late StreamSubscription<bool> _isDisconnectingSubscription;
   late StreamSubscription<int> _mtuSubscription;
@@ -46,20 +48,21 @@ class _DeviceScreenState extends State<DeviceScreen> {
 
     _connectionStateSubscription =
         widget.device.connectionState.listen((state) async {
-      _connectionState = state;
-      if (state == BluetoothConnectionState.connected) {
-        _services = []; // must rediscover services
-        Future.microtask(() async {
-          await onDiscoverServicesPressed();
+          _connectionState = state;
+          if (state == BluetoothConnectionState.connected) {
+            _services = []; // must rediscover services
+            await onDiscoverServicesPressed();
+            log("Ivan: Do ovde smo dosli");
+            await readWifiSSIDCharacteristic(); // Call the method to read Wi-Fi SSID characteristic
+            log("Ivan: ajde");
+          }
+          if (state == BluetoothConnectionState.connected && _rssi == null) {
+            _rssi = await widget.device.readRssi();
+          }
+          if (mounted) {
+            setState(() {});
+          }
         });
-      }
-      if (state == BluetoothConnectionState.connected && _rssi == null) {
-        _rssi = await widget.device.readRssi();
-      }
-      if (mounted) {
-        setState(() {});
-      }
-    });
 
     _mtuSubscription = widget.device.mtu.listen((value) {
       _mtuSize = value;
@@ -77,11 +80,11 @@ class _DeviceScreenState extends State<DeviceScreen> {
 
     _isDisconnectingSubscription =
         widget.device.isDisconnecting.listen((value) {
-      _isDisconnecting = value;
-      if (mounted) {
-        setState(() {});
-      }
-    });
+          _isDisconnecting = value;
+          if (mounted) {
+            setState(() {});
+          }
+        });
 
 
   }
@@ -95,10 +98,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
     super.dispose();
   }
 
-  Future _sendCredentials() async {
-    String ssid = _ssidController.text;
-    String password = _passwordController.text;
-
+  Future _sendCredentials(String ssid, String password) async {
     // Combine SSID and password, you might want a specific protocol or format
     String combinedCredentials = '$ssid:$password';
     // Convert the credentials to bytes and send them over the characteristic
@@ -137,6 +137,66 @@ class _DeviceScreenState extends State<DeviceScreen> {
   bool get isConnected {
     return _connectionState == BluetoothConnectionState.connected;
   }
+
+  Future<void> readWifiSSIDCharacteristic() async {
+    if (_services.isNotEmpty) {
+      for (var service in _services) {
+        for (var characteristic in service.characteristics) {
+          if (characteristic.uuid.toString().toUpperCase() == "5040") {
+            try {
+              List<int> value = await characteristic.read();
+              var tmp = value[0];
+              log("TU smo $tmp");
+              value.map((int val) {
+                log("vrijednost => $val");
+              });
+
+              // Assuming each byte in 'value' is a unique SSID identifier
+              setState(() {
+                wifiSSIDs = value.map((e) => "SSID_$e").toList(); // Placeholder conversion
+              });
+            } catch (e) {
+              log("Error reading SSID characteristic: $e");
+              Snackbar.show(ABC.c, "Error reading SSID characteristic: $e", success: false);
+            }
+            return; // Exit after reading the characteristic
+          }
+        }
+      }
+      Snackbar.show(ABC.c, "SSID characteristic not found", success: false);
+    } else {
+      Snackbar.show(ABC.c, "No services discovered", success: false);
+    }
+  }
+
+  // Add a method to handle SSID selection
+  void onSSIDSelected(String ssid) {
+    log("ale");
+    TextEditingController passwordController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Enter Password for $ssid"),
+          content: TextField(
+            controller: passwordController,
+            decoration: InputDecoration(labelText: 'Password'),
+            obscureText: true,
+          ),
+          actions: <Widget>[
+            ElevatedButton(
+              child: Text('Connect'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+                _sendCredentials(ssid, passwordController.text);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
 
   Future onConnectPressed() async {
     try {
@@ -206,6 +266,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
 
       log("Services: $_services");
       log("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAservices: $widget");
+      //await readWifiSSIDCharacteristic();
       Snackbar.show(ABC.c, "Discover Services: Success", success: true);
     } catch (e) {
       Snackbar.show(ABC.c, prettyException("Discover Services Error:", e),
@@ -232,12 +293,12 @@ class _DeviceScreenState extends State<DeviceScreen> {
     return _services
         .map(
           (s) => ServiceTile(
-            service: s,
-            characteristicTiles: s.characteristics
-                .map((c) => _buildCharacteristicTile(c))
-                .toList(),
-          ),
-        )
+        service: s,
+        characteristicTiles: s.characteristics
+            .map((c) => _buildCharacteristicTile(c))
+            .toList(),
+      ),
+    )
         .toList();
   }
 
@@ -245,7 +306,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
     return CharacteristicTile(
       characteristic: c,
       descriptorTiles:
-          c.descriptors.map((d) => DescriptorTile(descriptor: d)).toList(),
+      c.descriptors.map((d) => DescriptorTile(descriptor: d)).toList(),
     );
   }
 
@@ -346,7 +407,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
         ElevatedButton(
           onPressed: () {
             if (_ssidController.text.isNotEmpty && _passwordController.text.isNotEmpty) {
-              _sendCredentials();
+              //_sendCredentials();
             }
           },
           child: Text('Send'),

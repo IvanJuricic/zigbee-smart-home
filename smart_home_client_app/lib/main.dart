@@ -5,16 +5,41 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/screens/wifi_list_screen.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import 'screens/bluetooth_off_screen.dart';
 import 'screens/scan_screen.dart';
+import 'screens/menu_screen.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
   FlutterBluePlus.setLogLevel(LogLevel.verbose, color: true);
-  runApp(const FlutterBlueApp());
+  runApp(const BLEApp());
 }
 
+class BLEApp extends StatelessWidget {
+  const BLEApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      navigatorKey: navigatorKey,
+      title: 'Flutter Demo',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      routes: {
+        '/scanScreen': (context) => const ScanScreen(),
+      },
+      home: const MenuScreen(), // Your MenuScreen is the home screen
+    );
+  }
+}
+
+
+/*
 //
 // This widget shows BluetoothOffScreen or
 // ScanScreen depending on the adapter state
@@ -92,3 +117,6 @@ class BluetoothAdapterStateObserver extends NavigatorObserver {
     _adapterStateSubscription = null;
   }
 }
+
+
+ */

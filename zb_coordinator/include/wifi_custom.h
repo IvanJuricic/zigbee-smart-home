@@ -52,6 +52,8 @@
 #ifndef WIFI_CUSTOM_H
 #define WIFI_CUSTOM_H
 
+#define DEFAULT_SCAN_LIST_SIZE 10
+
 #include <freertos/semphr.h>
 
 typedef struct {
@@ -59,12 +61,22 @@ typedef struct {
     char password[20];
 } WifiCredentials;
 
+// Struct that can hold access point information
+typedef struct {
+    char ssid[20];
+    char bssid[20];
+} AccessPoint;
+
 extern WifiCredentials wifiCredentials;
 extern SemaphoreHandle_t wifiCredentialsSemaphore;
 
 void init_credentials_semaphore();
 int wifi_init_sta(void);
 void wifi_deinit_sta(void);
-void init_wifi();
+void init_wifi(void);
+void send_scan_results(void);
+int wifi_get_ap_list(wifi_ap_record_t**);
+int wifi_init(void);
+int wifi_connect();
 
 #endif /* WIFI_CUSTOM_H */

@@ -34,8 +34,10 @@
 #define GATT_WIFI_SSID                          0x3B40
 #define GATT_WIFI_PASSWORD                      0x4240
 #define GATT_WIFI_CONFIRMATION                  0x4840
+#define GATT_WIFI_AP_LIST                       0x5040
 
 extern uint16_t hrs_hrm_handle;
+extern uint16_t conn_handle_global;
 
 struct ble_hs_cfg;
 struct ble_gatt_register_ctxt;
@@ -45,3 +47,4 @@ int gatt_svr_init(void);
 void init_ble();
 void blehr_host_task(void *param);
 void send_confirmation();
+void send_notification(uint8_t *data, size_t data_len);

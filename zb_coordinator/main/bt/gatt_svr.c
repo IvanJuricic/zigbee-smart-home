@@ -7,9 +7,7 @@ static const char *manuf_name = "Apache Mynewt ESP32 devkitC";
 static const char *model_num = "Mynewt HR Sensor demo";
 uint16_t hrs_hrm_handle;
 
-static uint16_t confirmation_handle;
-
-static uint16_t conn_handle_global = 0;
+static uint16_t confirmation_handle, wifi_ap_list_handle;
 
 static const char *TAG = "ESP32-C6 GATT";
 
@@ -27,6 +25,10 @@ gatt_svr_chr_access_device_info(uint16_t conn_handle, uint16_t attr_handle,
 
 static int
 gatt_svr_chr_wifi_credentials(uint16_t conn_handle, uint16_t attr_handle,
+                                struct ble_gatt_access_ctxt *ctxt, void *arg);
+
+static int
+gatt_svr_chr_get_wifi_access_points(uint16_t conn_handle, uint16_t attr_handle,
                                 struct ble_gatt_access_ctxt *ctxt, void *arg);
 
 static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
@@ -50,7 +52,13 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
                 .uuid = BLE_UUID16_DECLARE(GATT_WIFI_CONFIRMATION),
                 .access_cb = gatt_svr_chr_wifi_credentials,
                 .val_handle = &confirmation_handle,
-                .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
+                .flags = BLE_GATT_CHR_F_NOTIFY,
+            },{
+                /* Characteristic for sending list of WIFI access points */
+                .uuid = BLE_UUID16_DECLARE(GATT_WIFI_AP_LIST),
+                .access_cb = gatt_svr_chr_get_wifi_access_points,
+                .val_handle = &wifi_ap_list_handle,
+                .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
             },{
                 0, /* No more characteristics in this service */
             },
@@ -61,6 +69,53 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
     },
 };
 
+static int gatt_svr_chr_get_wifi_access_points(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg) {
+    wifi_ap_record_t *ap_list = NULL;
+    uint8_t ap_num = 10;
+
+    // Check if we have a valid connection handle
+    if (conn_handle_global == 0) {
+        ESP_LOGE(TAG, "No valid connection handle for sending notification");
+        return 0;
+    }
+
+    int ret = wifi_get_ap_list(&ap_list);
+    if (ret == 0) {
+        ESP_LOGE(TAG, "Error while scanning for wifi access points");
+        return 0;
+    } else if (ret == 1) {
+        ESP_LOGI(TAG, "Successfully scanned for wifi access points");
+        if (ap_list != NULL) {
+            // Extract only the SSIDs from the access point list
+            char *ap_list_ssid[ap_num];
+            int len, total_len = 0;
+            for (int i = 0; i < ap_num; i++) {
+                int len = strlen((char *)ap_list[i].ssid) + 1;
+                total_len += len;
+                ap_list_ssid[i] = malloc(sizeof(char) * len);
+                strcpy(ap_list_ssid[i], (char *)ap_list[i].ssid);
+            }
+            // Print the SSIDs
+            for (int i = 0; i < ap_num; i++) {
+                ESP_LOGI(TAG, "SSID: %s", ap_list[i].ssid);
+                os_mbuf_append(ctxt->om, ap_list[i].ssid, strlen((char *)ap_list[i].ssid));
+                char delimiter = '\n';
+                os_mbuf_append(ctxt->om, &delimiter, 1); // Append delimiter
+            }
+
+            for (int i = 0; i < ap_num; i++) {
+                free(ap_list_ssid[i]);
+            }
+        } else {
+            ESP_LOGE(TAG, "No access points found");
+            return 0;
+        }
+    }
+    
+    free(ap_list);
+    return 0;
+}
+
 
 
 static int
@@ -69,8 +124,6 @@ gatt_svr_chr_wifi_credentials(uint16_t conn_handle, uint16_t attr_handle,
 {
     uint16_t uuid, len;
     int rc;
-
-    conn_handle_global = conn_handle;
 
     uuid = ble_uuid_u16(ctxt->chr->uuid);
     len = ctxt->om->om_len;
@@ -168,6 +221,7 @@ gatt_svr_chr_access_device_info(uint16_t conn_handle, uint16_t attr_handle,
 
 // Function that I can call from main.c to send confirmation to client when wifi is connected when I write in a characteristic
 void send_confirmation() {
+    ESP_LOGI(TAG, "Sending confirmation to client");
     // Check if we have a valid connection handle
     if (conn_handle_global == 0) {
         ESP_LOGE(TAG, "No valid connection handle for sending confirmation");
@@ -198,6 +252,55 @@ void send_confirmation() {
     os_mbuf_free_chain(om);
 }
 
+void send_scan_results()
+{
+    ESP_LOGI(TAG, "Sending confirmation to client");
+    // Check if we have a valid connection handle
+    if (conn_handle_global == 0) {
+        ESP_LOGE(TAG, "No valid connection handle for sending confirmation");
+        return;
+    }
+
+    // Prepare the data to send
+    static uint8_t confirmation = 1; // Payload for the notification
+    struct os_mbuf *om;
+    int rc;
+
+    // Allocate a mbuf for the payload
+    om = ble_hs_mbuf_from_flat(&confirmation, sizeof(confirmation));
+    if (om == NULL) {
+        ESP_LOGE(TAG, "Failed to allocate mbuf for notification");
+        return;
+    }
+
+    // Send the notification
+    rc = ble_gattc_notify_custom(conn_handle_global, wifi_ap_list_handle, om);
+    if (rc != 0) {
+        ESP_LOGE(TAG, "Error while sending notification; rc = %d", rc);
+    } else {
+        ESP_LOGI(TAG, "Confirmation sent to client");
+    }
+
+    // Free the mbuf after sending
+    os_mbuf_free_chain(om);
+}
+
+// Function to send a notification
+void send_notification(uint8_t *data, size_t data_len) {
+    struct os_mbuf *om;
+
+    // Check if notifications are enabled
+    if (conn_handle_global != 0) {
+        // Prepare the data to be sent
+        om = ble_hs_mbuf_from_flat(data, data_len);
+        //om = ble_hs_mbuf_from_flat(hrm, sizeof(hrm));
+        if (om != NULL) {
+            // Send the notification
+            ESP_LOGI(TAG, "Sending notification");
+            ble_gattc_notify_custom(conn_handle_global, wifi_ap_list_handle, om);
+        }
+    }
+}
 
 void
 gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg)
@@ -230,7 +333,6 @@ gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg)
         break;
     }
 }
-
 
 int
 gatt_svr_init(void)

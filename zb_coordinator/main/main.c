@@ -22,9 +22,20 @@ app_main()
     }
     ESP_ERROR_CHECK(ret);
 
-    //init_ble();
+    wifi_init();
+    init_ble();
+    int i = wifi_connect();
+    if (i == 1)
+    {
+        ESP_LOGI(TAG, "Connected to AP");
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Error connecting to AP");
+    }
     //init_wifi();
-    app_main_zb();
+    //wifi_init_sta();
+    //app_main_zb();
 
     while(1)
     {

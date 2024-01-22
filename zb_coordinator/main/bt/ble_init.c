@@ -6,7 +6,7 @@ esp_err_t ret;
 static const char *tag = "ESP32-C6";
 static TimerHandle_t blehr_tx_timer;
 static bool notify_state;
-static uint16_t conn_handle;
+uint16_t conn_handle_global = 0;
 static const char *device_name = "ZB_BLE_WiFi_Gateway";
 static int blehr_gap_event(struct ble_gap_event *event, void *arg);
 static uint8_t blehr_addr_type;
@@ -139,7 +139,7 @@ blehr_tx_hrate(TimerHandle_t ev)
     }
 
     om = ble_hs_mbuf_from_flat(hrm, sizeof(hrm));
-    rc = ble_gatts_notify_custom(conn_handle, hrs_hrm_handle, om);
+    rc = ble_gatts_notify_custom(conn_handle_global, hrs_hrm_handle, om);
 
     assert(rc == 0);
 
@@ -160,7 +160,7 @@ blehr_gap_event(struct ble_gap_event *event, void *arg)
             /* Connection failed; resume advertising */
             blehr_advertise();
         }
-        conn_handle = event->connect.conn_handle;
+        conn_handle_global = event->connect.conn_handle;
         break;
 
     case BLE_GAP_EVENT_DISCONNECT:
