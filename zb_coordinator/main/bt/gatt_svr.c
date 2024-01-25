@@ -7,7 +7,7 @@ static const char *manuf_name = "Apache Mynewt ESP32 devkitC";
 static const char *model_num = "Mynewt HR Sensor demo";
 uint16_t hrs_hrm_handle;
 
-static uint16_t confirmation_handle, wifi_ap_list_handle;
+static uint16_t confirmation_handle, wifi_ap_list_handle, wifi_disconnect_handle, wifi_status_handle;
 
 static const char *TAG = "ESP32-C6 GATT";
 
@@ -31,11 +31,20 @@ static int
 gatt_svr_chr_get_wifi_access_points(uint16_t conn_handle, uint16_t attr_handle,
                                 struct ble_gatt_access_ctxt *ctxt, void *arg);
 
-static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
+static int
+gatt_svr_chr_disconnect_wifi(uint16_t conn_handle, uint16_t attr_handle,
+                                struct ble_gatt_access_ctxt *ctxt, void *arg);
+
+static int
+gatt_svr_chr_get_wifi_status(uint16_t conn_handle, uint16_t attr_handle,
+                                struct ble_gatt_access_ctxt *ctxt, void *arg);
+
+static const 
+struct ble_gatt_svc_def gatt_svr_svcs[] = {
     {
-    /* Service: get wifi credentials */
+    /* Service: Wifi control */
         .type = BLE_GATT_SVC_TYPE_PRIMARY,
-        .uuid = BLE_UUID16_DECLARE(GATT_WIFI_CREDENTIALS_UUID),
+        .uuid = BLE_UUID16_DECLARE(GATT_WIFI_UUID),
         .characteristics = (struct ble_gatt_chr_def[])
         { {
                 /* Characteristic: SSID */
@@ -50,7 +59,7 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
             },{
                 /* Characteristic: Confirmation */
                 .uuid = BLE_UUID16_DECLARE(GATT_WIFI_CONFIRMATION),
-                .access_cb = gatt_svr_chr_wifi_credentials,
+                .access_cb = gatt_svr_chr_access_heart_rate,
                 .val_handle = &confirmation_handle,
                 .flags = BLE_GATT_CHR_F_NOTIFY,
             },{
@@ -58,6 +67,18 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
                 .uuid = BLE_UUID16_DECLARE(GATT_WIFI_AP_LIST),
                 .access_cb = gatt_svr_chr_get_wifi_access_points,
                 .val_handle = &wifi_ap_list_handle,
+                .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
+            },{
+                /* Characteristic for disconnecting from Wifi */
+                .uuid = BLE_UUID16_DECLARE(GATT_WIFI_DISCONNECT),
+                .access_cb = gatt_svr_chr_disconnect_wifi,
+                .val_handle = &wifi_disconnect_handle,
+                .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE,
+            },{
+                /* Characteristic for sending list of WIFI access points */
+                .uuid = BLE_UUID16_DECLARE(GATT_WIFI_GET_STATUS),
+                .access_cb = gatt_svr_chr_disconnect_wifi,
+                .val_handle = &wifi_status_handle,
                 .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
             },{
                 0, /* No more characteristics in this service */
@@ -117,6 +138,43 @@ static int gatt_svr_chr_get_wifi_access_points(uint16_t conn_handle, uint16_t at
 }
 
 
+static int gatt_svr_chr_get_wifi_status(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg)
+{
+    // Check if we have a valid connection handle
+    if (conn_handle_global == 0) {
+        ESP_LOGE(TAG, "No valid connection handle for sending notification");
+        return 0;
+    }
+
+    ESP_LOGI(TAG, "Sending wifi status to client");
+    // Send confirmation to client
+    if (get_wifi_status()) {
+        send_confirmation("CONNECTED");
+    } else {
+        send_confirmation("DISCONNECTED");
+    }
+
+    return 0;
+
+}
+
+static int gatt_svr_chr_disconnect_wifi(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg)
+{
+    // Check if we have a valid connection handle
+    if (conn_handle_global == 0) {
+        ESP_LOGE(TAG, "No valid connection handle for sending notification");
+        return 0;
+    }
+
+    ESP_LOGI(TAG, "Disconnecting from wifi");
+    // Disconnect from wifi
+    wifi_disconnect();
+
+    // Send confirmation to client
+    send_confirmation("DISCONNECTED");
+
+    return 0;
+}
 
 static int
 gatt_svr_chr_wifi_credentials(uint16_t conn_handle, uint16_t attr_handle,
@@ -127,12 +185,6 @@ gatt_svr_chr_wifi_credentials(uint16_t conn_handle, uint16_t attr_handle,
 
     uuid = ble_uuid_u16(ctxt->chr->uuid);
     len = ctxt->om->om_len;
-
-    if (uuid == GATT_WIFI_CONFIRMATION)
-    {
-        confirmation_handle = attr_handle;
-        printf("Confirmation handle: %d\n", confirmation_handle);
-    }
 
     buff = malloc(sizeof(char) * (len + 1));
 
@@ -166,6 +218,7 @@ gatt_svr_chr_wifi_credentials(uint16_t conn_handle, uint16_t attr_handle,
         _password = 0;
 
         xSemaphoreGive(wifiCredentialsSemaphore);
+        wifi_connect();
     }
 
     return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
@@ -220,7 +273,7 @@ gatt_svr_chr_access_device_info(uint16_t conn_handle, uint16_t attr_handle,
 }
 
 // Function that I can call from main.c to send confirmation to client when wifi is connected when I write in a characteristic
-void send_confirmation() {
+void send_confirmation(char *confirmation) {
     ESP_LOGI(TAG, "Sending confirmation to client");
     // Check if we have a valid connection handle
     if (conn_handle_global == 0) {
@@ -228,13 +281,19 @@ void send_confirmation() {
         return;
     }
 
+    char confirmation_copy[20] = {0};
+
+    strcpy(confirmation_copy, confirmation);
+
+    ESP_LOGI(TAG, "Confirmation: %s", confirmation_copy);
+
     // Prepare the data to send
-    static uint8_t confirmation = 1; // Payload for the notification
+    //static uint8_t confirmation = 1; // Payload for the notification
     struct os_mbuf *om;
     int rc;
 
     // Allocate a mbuf for the payload
-    om = ble_hs_mbuf_from_flat(&confirmation, sizeof(confirmation));
+    om = ble_hs_mbuf_from_flat(&confirmation_copy, strlen(confirmation_copy));
     if (om == NULL) {
         ESP_LOGE(TAG, "Failed to allocate mbuf for notification");
         return;
@@ -249,57 +308,7 @@ void send_confirmation() {
     }
 
     // Free the mbuf after sending
-    os_mbuf_free_chain(om);
-}
-
-void send_scan_results()
-{
-    ESP_LOGI(TAG, "Sending confirmation to client");
-    // Check if we have a valid connection handle
-    if (conn_handle_global == 0) {
-        ESP_LOGE(TAG, "No valid connection handle for sending confirmation");
-        return;
-    }
-
-    // Prepare the data to send
-    static uint8_t confirmation = 1; // Payload for the notification
-    struct os_mbuf *om;
-    int rc;
-
-    // Allocate a mbuf for the payload
-    om = ble_hs_mbuf_from_flat(&confirmation, sizeof(confirmation));
-    if (om == NULL) {
-        ESP_LOGE(TAG, "Failed to allocate mbuf for notification");
-        return;
-    }
-
-    // Send the notification
-    rc = ble_gattc_notify_custom(conn_handle_global, wifi_ap_list_handle, om);
-    if (rc != 0) {
-        ESP_LOGE(TAG, "Error while sending notification; rc = %d", rc);
-    } else {
-        ESP_LOGI(TAG, "Confirmation sent to client");
-    }
-
-    // Free the mbuf after sending
-    os_mbuf_free_chain(om);
-}
-
-// Function to send a notification
-void send_notification(uint8_t *data, size_t data_len) {
-    struct os_mbuf *om;
-
-    // Check if notifications are enabled
-    if (conn_handle_global != 0) {
-        // Prepare the data to be sent
-        om = ble_hs_mbuf_from_flat(data, data_len);
-        //om = ble_hs_mbuf_from_flat(hrm, sizeof(hrm));
-        if (om != NULL) {
-            // Send the notification
-            ESP_LOGI(TAG, "Sending notification");
-            ble_gattc_notify_custom(conn_handle_global, wifi_ap_list_handle, om);
-        }
-    }
+    //os_mbuf_free_chain(om);
 }
 
 void

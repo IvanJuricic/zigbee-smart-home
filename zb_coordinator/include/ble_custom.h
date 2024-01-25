@@ -30,11 +30,13 @@
 #define GATT_MANUFACTURER_NAME_UUID             0x2A29
 #define GATT_MODEL_NUMBER_UUID                  0x2A24
 
-#define GATT_WIFI_CREDENTIALS_UUID              0x2B36
+#define GATT_WIFI_UUID                          0x2B36
 #define GATT_WIFI_SSID                          0x3B40
 #define GATT_WIFI_PASSWORD                      0x4240
 #define GATT_WIFI_CONFIRMATION                  0x4840
 #define GATT_WIFI_AP_LIST                       0x5040
+#define GATT_WIFI_DISCONNECT                    0x5110
+#define GATT_WIFI_GET_STATUS                    0x5210
 
 extern uint16_t hrs_hrm_handle;
 extern uint16_t conn_handle_global;
@@ -46,5 +48,5 @@ void gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg);
 int gatt_svr_init(void);
 void init_ble();
 void blehr_host_task(void *param);
-void send_confirmation();
+void send_confirmation(char *confirmation);
 void send_notification(uint8_t *data, size_t data_len);

@@ -41,3 +41,13 @@ String prettyException(String prefix, dynamic e) {
   }
   return prefix + e.toString();
 }
+
+
+void _showSnackbar(BuildContext context, String data) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('Success: $data'),
+      duration: Duration(seconds: 2),
+    ),
+  );
+}

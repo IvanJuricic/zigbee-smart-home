@@ -5,6 +5,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/screens/main_control_screen.dart';
 import 'package:flutter_application_1/screens/wifi_list_screen.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
@@ -32,6 +33,7 @@ class BLEApp extends StatelessWidget {
       ),
       routes: {
         '/scanScreen': (context) => const ScanScreen(),
+        '/mainControlScreen': (context) => MainControlScreen(),
       },
       home: const MenuScreen(), // Your MenuScreen is the home screen
     );

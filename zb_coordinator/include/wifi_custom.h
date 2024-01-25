@@ -54,6 +54,9 @@
 
 #define DEFAULT_SCAN_LIST_SIZE 10
 
+//#define WIFI_CONNECTED "CONNECTED\0"
+//#define WIFI_DISCONNECTED "DISCONNECTED\0"
+
 #include <freertos/semphr.h>
 
 typedef struct {
@@ -78,5 +81,7 @@ void send_scan_results(void);
 int wifi_get_ap_list(wifi_ap_record_t**);
 int wifi_init(void);
 int wifi_connect();
+void wifi_disconnect();
+int get_wifi_status();
 
 #endif /* WIFI_CUSTOM_H */

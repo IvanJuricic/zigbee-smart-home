@@ -24,15 +24,15 @@ app_main()
 
     wifi_init();
     init_ble();
-    int i = wifi_connect();
-    if (i == 1)
-    {
-        ESP_LOGI(TAG, "Connected to AP");
-    }
-    else
-    {
-        ESP_LOGI(TAG, "Error connecting to AP");
-    }
+    /*int i = wifi_connect();
+        if (i == 1)
+        {
+            ESP_LOGI(TAG, "Connected to AP");
+        }
+        else
+        {
+            ESP_LOGI(TAG, "Error connecting to AP");
+        }*/
     //init_wifi();
     //wifi_init_sta();
     //app_main_zb();
@@ -41,6 +41,7 @@ app_main()
     {
         //ESP_LOGI(TAG, "lasdlk");
         //vTaskDelay(1000 / portTICK_PERIOD_MS);
+        
     }
     // Additional application code goes here
 }
