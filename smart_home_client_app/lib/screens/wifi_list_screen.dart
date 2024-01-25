@@ -29,8 +29,7 @@ class _WifiListScreenState extends State<WifiListScreen> {
   static bool _isWifiConnected = false;
   bool _isScanningAPs = false;
 
-  late StreamSubscription<
-      BluetoothConnectionState> _connectionStateSubscription;
+  late StreamSubscription<BluetoothConnectionState> _connectionStateSubscription;
 
   @override
   void initState() {
@@ -86,9 +85,6 @@ class _WifiListScreenState extends State<WifiListScreen> {
   }
 
   Future _sendCredentials(String ssid, String password) async {
-    setState(() {
-      _isScanningAPs = true; // Stop waiting for response
-    });
     // Combine SSID and password, you might want a specific protocol or format
     String combinedCredentials = '$ssid:$password';
     // Convert the credentials to bytes and send them over the characteristic
@@ -125,10 +121,6 @@ class _WifiListScreenState extends State<WifiListScreen> {
 
     // Optionally, add logic to confirm the credentials were sent successfully
     await _confirmationListener();
-
-    setState(() {
-      _isScanningAPs = false; // Stop waiting for response
-    });
   }
 
   Future _confirmationListener() async {
@@ -153,7 +145,7 @@ class _WifiListScreenState extends State<WifiListScreen> {
                   if (_isWifiConnected) {
                     Snackbar.show(ABC.c, "Connected to Wi-Fi", success: true);
                     // Navigate only if the widget is still mounted after 2 seconds
-                   /* Future.delayed(const Duration(seconds: 2), () =>
+                    /* Future.delayed(const Duration(seconds: 2), () =>
                         Navigator.of(context).popUntil((route) => route
                             .isFirst));*/
                     //Navigator.of(context).popUntil((route) => route.isFirst)
@@ -210,18 +202,26 @@ class _WifiListScreenState extends State<WifiListScreen> {
   }
 
   Future<void> _getWifiAPList() async {
-    setState(() => _isScanningAPs = true);
+    if (mounted) {
+      setState(() {
+        _isScanningAPs = true;
+      });
+    }
     try {
       for (var characteristic in _characteristics) {
         if (characteristic.uuid.toString().toUpperCase() == "5040") {
           await characteristic.setNotifyValue(true);
           final subscription = characteristic.lastValueStream.listen((value) {
             String ssidData = utf8.decode(value);
-            List<String> ssids = ssidData.split('\n').where((s) => s.isNotEmpty).toList();
-            setState(() {
-              wifiSSIDs.clear();
-              wifiSSIDs.addAll(ssids);
-            });
+            List<String> ssids = ssidData.split('\n')
+                .where((s) => s.isNotEmpty)
+                .toList();
+            if (mounted) { // Check if the widget is still mounted
+              setState(() {
+                wifiSSIDs.clear();
+                wifiSSIDs.addAll(ssids);
+              });
+            }
           });
 
           widget.device.cancelWhenDisconnected(subscription);
@@ -230,8 +230,6 @@ class _WifiListScreenState extends State<WifiListScreen> {
       }
     } catch (e) {
       debugPrint("Error getting WiFi AP list: $e");
-    } finally {
-      setState(() => _isScanningAPs = false);
     }
   }
 
@@ -255,7 +253,7 @@ class _WifiListScreenState extends State<WifiListScreen> {
         }
       }
 
-      if (!_isWifiConnected) _getWifiAPList();
+      //if (!_isWifiConnected) _getWifiAPList();
     } catch (e) {
       debugPrint("Error discovering services: $e");
     } finally {
@@ -264,14 +262,14 @@ class _WifiListScreenState extends State<WifiListScreen> {
   }
 
   Future<void> _onRefresh() async {
-    if (_isConnected) {
+    if (_isConnected && !_isWifiConnected) {
       setState(() {
-        wifiSSIDs.clear();
-        _isScanningAPs = true; // Show the loading indicator while refreshing
+        //wifiSSIDs.clear();
+        _isScanningAPs = true; // Show loading indicator while refreshing
       });
       await _getWifiAPList();
       setState(() {
-        _isScanningAPs = false; // Hide the loading indicator after refreshing
+        _isScanningAPs = false; // Hide loading indicator after refreshing
       });
     }
   }
@@ -281,30 +279,6 @@ class _WifiListScreenState extends State<WifiListScreen> {
   void dispose() {
     _connectionStateSubscription.cancel();
     super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.device.platformName),
-        backgroundColor: Colors.grey[900],
-        // ... [app bar actions]
-      ),
-      body: RefreshIndicator(
-        onRefresh: _onRefresh,
-        child: Column(
-          children: [
-            _buildConnectionStatusBar(),
-            Expanded(
-              child: _isDiscoveringServices || _isScanningAPs
-                  ? Center(child: CircularProgressIndicator())
-                  : _buildWifiList(),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Widget _buildConnectionStatusBar() {
@@ -320,7 +294,9 @@ class _WifiListScreenState extends State<WifiListScreen> {
                   color: _isWifiConnected ? Colors.green : Colors.red),
               SizedBox(width: 8),
               Text(
-                _isWifiConnected ? "Connected to Wi-Fi" : "Not connected to Wi-Fi",
+                _isWifiConnected
+                    ? "Connected to Wi-Fi"
+                    : "Not connected to Wi-Fi",
                 style: TextStyle(color: Colors.white),
               ),
             ],
@@ -343,12 +319,13 @@ class _WifiListScreenState extends State<WifiListScreen> {
 
   // Function to get the WiFi connection status
   Future<int> _getWifiConnectionStatus() async {
-    try{
+    try {
       for (var characteristic in _characteristics) {
         if (characteristic.uuid.toString().toUpperCase() == "5210") {
           // Check if characteristic is readable
           if (characteristic.properties.read) {
-            await characteristic.write(utf8.encode("GET_WIFI_STATUS"), withoutResponse: true);
+            await characteristic.write(
+                utf8.encode("GET_WIFI_STATUS"), withoutResponse: true);
             debugPrint("Sent GET_WIFI_STATUS command");
             return 1;
           } else {
@@ -357,60 +334,102 @@ class _WifiListScreenState extends State<WifiListScreen> {
           }
         }
       }
-    }catch(e){
+    } catch (e) {
       debugPrint("Error discovering services: $e");
-    }finally{
+    } finally {
       if (mounted) {
         setState(() {
           // Update state here if necessary
-          _isScanningAPs = false;
+          //_isScanningAPs = false;
         });
       }
     }
-    /*try {
-      BluetoothCharacteristic? characteristic = _characteristics.firstWhere(
-            (c) => c.uuid.toString().toUpperCase() == "5040",
-        orElse: () => null,
-      );
-      if (characteristic != null) {
-        await characteristic.write(utf8.encode("GET_WIFI_STATUS"), withoutResponse: true);
-        debugPrint("Sent GET_WIFI_STATUS command");
-        return 1;
-      } else {
-        debugPrint("Characteristic 5040 not found");
-        return 0;
-      }
-    } catch (e) {
-      debugPrint("Error sending disconnect command: $e");
-      return 0;
-    }*/
+
     return 1;
   }
 
   Future<void> _disconnectWifi() async {
-    try{
+    try {
       log("Tu smo");
       for (var characteristic in _characteristics) {
         if (characteristic.uuid.toString().toUpperCase() == "5110") {
           // Clear previous SSIDs
-          await characteristic.write(utf8.encode("DISCONNECT_WIFI"), withoutResponse: characteristic.properties.writeWithoutResponse);
+          await characteristic.write(utf8.encode("DISCONNECT_WIFI"),
+              withoutResponse: characteristic.properties.writeWithoutResponse);
           debugPrint("Sent DISCONNECT_WIFI command");
           break;
         }
       }
-    }catch(e){
+    } catch (e) {
       debugPrint("Error discovering services: $e");
-    }finally{
+    } finally {
       setState(() => _isWifiConnected = false);
       _getWifiAPList(); // Fetch the list again after disconnecting
     }
   }
 
-  Widget _buildWifiList() {
+  Widget _buildLoadingIndicator() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 10),
+          Text(
+            "Retrieving WiFi AP List",
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.device.platformName),
+        backgroundColor: Colors.grey[900],
+        // ... [app bar actions]
+      ),
+      body: _isWifiConnected ? _buildNonRefreshableList() : _buildRefreshableList(),
+    );
+  }
+
+  Widget _buildRefreshableList() {
+    return Column(
+      children: [
+        _buildConnectionStatusBar(),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _onRefresh,
+            child: _buildWifiListView(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNonRefreshableList() {
+    return Column(
+      children: [
+        _buildConnectionStatusBar(),
+        Expanded(
+          child: _isScanningAPs
+              ? _buildLoadingIndicator()
+              : _buildWifiListView(disableTouch: true),
+        ),
+      ],
+    );
+  }
+
+// Rest of your code...
+
+
+  Widget _buildWifiListView({bool disableTouch = false}) {
     if (wifiSSIDs.isEmpty && !_isDiscoveringServices && !_isScanningAPs) {
-      // Show a message to slide down to refresh when the list is empty
       return ListView(
-        physics: AlwaysScrollableScrollPhysics(), // Ensure it's always scrollable
+        physics: AlwaysScrollableScrollPhysics(),
         children: [
           ListTile(
             title: Center(
@@ -423,26 +442,22 @@ class _WifiListScreenState extends State<WifiListScreen> {
         ],
       );
     } else {
-      return Opacity(
-        opacity: _isWifiConnected ? 0.5 : 1.0, // Make list appear disabled when connected
-        child: ListView.builder(
-          itemCount: wifiSSIDs.length,
-          itemBuilder: (context, index) {
-            return Card(
+      return ListView.builder(
+        itemCount: wifiSSIDs.length,
+        itemBuilder: (context, index) {
+          return Opacity(
+            opacity: disableTouch ? 0.5 : 1.0,
+            child: Card(
               margin: EdgeInsets.all(8.0),
               child: ListTile(
                 leading: Icon(Icons.wifi),
                 title: Text(wifiSSIDs[index]),
-                onTap: _isWifiConnected ? null : () => _promptForPassword(wifiSSIDs[index]), // Disable onTap when connected
+                onTap: disableTouch ? null : () => _promptForPassword(wifiSSIDs[index]),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       );
     }
   }
-
-
-
-
 }

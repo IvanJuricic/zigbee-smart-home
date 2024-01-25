@@ -40,11 +40,7 @@ event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* ev
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
     {
-        if (wifi_connected) {
-            ESP_LOGI(TAG, "WiFi already connected");
-            return;
-        }
-        else if (scanning_aps) {
+        if (scanning_aps) {
             ESP_LOGI(TAG, "WiFi already scanning");
             return;
         }
@@ -205,54 +201,55 @@ int wifi_init(void)
 // Function for wifi connection without scanning
 int wifi_connect()
 {
+    ESP_LOGI(TAG, "Waiting for WiFi credentials...");
+    xSemaphoreTake(wifiCredentialsSemaphore, portMAX_DELAY);
+    ESP_LOGI(TAG, "Got WiFi credentials");
+    
     if (!wifi_initialized) {
-            ESP_LOGE(TAG, "WiFi not initialized");
-            return -1;
-        }
+        ESP_LOGE(TAG, "WiFi not initialized");
+        return -1;
+    }
 
-        if (wifi_connected) {
-            ESP_LOGI(TAG, "WiFi already connected");
-            return 1;
-        }
+    if (wifi_connected) {
+        ESP_LOGI(TAG, "WiFi already connected");
+        return 1;
+    }
 
-        ESP_LOGI(TAG, "Waiting for WiFi credentials...");
-        xSemaphoreTake(wifiCredentialsSemaphore, portMAX_DELAY);
+    wifi_config_t wifi_config = {};
+    strcpy((char *)wifi_config.sta.ssid, wifiCredentials.ssid);
+    strcpy((char *)wifi_config.sta.password, wifiCredentials.password);
 
-        wifi_config_t wifi_config = {};
-        strcpy((char *)wifi_config.sta.ssid, wifiCredentials.ssid);
-        strcpy((char *)wifi_config.sta.password, wifiCredentials.password);
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
 
-        ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-        ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_LOGI(TAG, "WiFi started");
+    ESP_LOGI(TAG, "Waiting for WiFi Event Group bits...");
 
-        ESP_LOGI(TAG, "WiFi started");
-        ESP_LOGI(TAG, "Waiting for WiFi Event Group bits...");
+    EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
+                WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
+                pdFALSE,
+                pdFALSE,
+                portMAX_DELAY);
 
-        EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
-                    WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
-                    pdFALSE,
-                    pdFALSE,
-                    portMAX_DELAY);
-
-        /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
-        * happened. */
-        if (bits & WIFI_CONNECTED_BIT)
-        {
-            ESP_LOGI(TAG, "connected to ap SSID:%s password:%s", wifi_config.sta.ssid, wifi_config.sta.password);
-            //send_confirmation("CONNECTED");  // Send confirmation to client
-            return 1;
-        }
-        else if (bits & WIFI_FAIL_BIT)
-        {
-            ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s", wifi_config.sta.ssid, wifi_config.sta.password);
-            //send_confirmation("DISCONNECTED");  // Send confirmation to client
-            return -1;
-        }
-        else
-        {
-            ESP_LOGE(TAG, "UNEXPECTED EVENT");
-            return 0;
-        }
+    /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
+    * happened. */
+    if (bits & WIFI_CONNECTED_BIT)
+    {
+        ESP_LOGI(TAG, "connected to ap SSID:%s password:%s", wifi_config.sta.ssid, wifi_config.sta.password);
+        //send_confirmation("CONNECTED");  // Send confirmation to client
+        return 1;
+    }
+    else if (bits & WIFI_FAIL_BIT)
+    {
+        ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s", wifi_config.sta.ssid, wifi_config.sta.password);
+        //send_confirmation("DISCONNECTED");  // Send confirmation to client
+        return -1;
+    }
+    else
+    {
+        ESP_LOGE(TAG, "UNEXPECTED EVENT");
+        return 0;
+    }
     
 }
 

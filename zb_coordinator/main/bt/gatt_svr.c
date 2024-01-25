@@ -218,7 +218,6 @@ gatt_svr_chr_wifi_credentials(uint16_t conn_handle, uint16_t attr_handle,
         _password = 0;
 
         xSemaphoreGive(wifiCredentialsSemaphore);
-        wifi_connect();
     }
 
     return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
