@@ -23,6 +23,7 @@ class _ScanScreenState extends State<ScanScreen> {
   List<BluetoothDevice> _systemDevices = [];
   List<ScanResult> _scanResults = [];
   bool _isScanning = false;
+  BluetoothDevice? _connectedDevice;
   late StreamSubscription<List<ScanResult>> _scanResultsSubscription;
   late StreamSubscription<bool> _isScanningSubscription;
 
@@ -55,23 +56,17 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   Future onScanPressed() async {
+    if (_connectedDevice != null) return;  // Do not scan if a device is connected
+
     try {
       _systemDevices = await FlutterBluePlus.systemDevices;
-    } catch (e) {
-      Snackbar.show(ABC.b, prettyException("System Devices Error:", e),
-          success: false);
-    }
-    try {
-      // android is slow when asking for all advertisments,
-      // so instead we only ask for 1/8 of them
       int divisor = Platform.isAndroid ? 8 : 1;
       await FlutterBluePlus.startScan(
           timeout: const Duration(seconds: 15),
           continuousUpdates: true,
           continuousDivisor: divisor);
     } catch (e) {
-      Snackbar.show(ABC.b, prettyException("Start Scan Error:", e),
-          success: false);
+      Snackbar.show(ABC.b, prettyException("Start Scan Error:", e), success: false);
     }
     if (mounted) {
       setState(() {});
@@ -89,8 +84,9 @@ class _ScanScreenState extends State<ScanScreen> {
 
   void onConnectPressed(BluetoothDevice device) {
     device.connectAndUpdateStream().catchError((e) {
-      Snackbar.show(ABC.c, prettyException("Connect Error:", e),
-          success: false);
+      Snackbar.show(ABC.c, prettyException("Connect Error:", e), success: false);
+    }).then((_) {
+      setState(() => _connectedDevice = device);
     });
     MaterialPageRoute route = MaterialPageRoute(
         builder: (context) => WifiListScreen(device: device),
@@ -98,7 +94,7 @@ class _ScanScreenState extends State<ScanScreen> {
     Navigator.of(context).push(route);
   }
 
-  Future onRefresh() {
+  Future onRefresh() async {
     if (_isScanning == false) {
       FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
     }
@@ -109,6 +105,8 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   Widget buildScanButton(BuildContext context) {
+    if (_connectedDevice != null) return SizedBox();  // Hide scan button when a device is connected
+
     if (FlutterBluePlus.isScanningNow) {
       return FloatingActionButton(
         child: const Icon(Icons.stop),
@@ -121,31 +119,50 @@ class _ScanScreenState extends State<ScanScreen> {
     }
   }
 
+
   List<Widget> _buildSystemDeviceTiles(BuildContext context) {
     return _systemDevices
         .map(
           (d) => SystemDeviceTile(
-            device: d,
-            onOpen: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => WifiListScreen(device: d),
-                settings: const RouteSettings(name: '/WifiListScreen'),
-              ),
-            ),
-            onConnect: () => onConnectPressed(d),
+        device: d,
+        onOpen: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => WifiListScreen(device: d),
+            settings: const RouteSettings(name: '/WifiListScreen'),
           ),
-        )
+        ),
+        onConnect: () => onConnectPressed(d),
+      ),
+    )
         .toList();
+  }
+
+  List<Widget> _buildConnectedDeviceTile(BuildContext context) {
+    if (_connectedDevice != null) {
+      return [
+        SystemDeviceTile(
+          device: _connectedDevice!,
+          onOpen: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => WifiListScreen(device: _connectedDevice!),
+              settings: const RouteSettings(name: '/WifiListScreen'),
+            ),
+          ),
+          onConnect: () => onConnectPressed(_connectedDevice!),
+        )
+      ];
+    }
+    return [];
   }
 
   List<Widget> _buildScanResultTiles(BuildContext context) {
     return _scanResults
         .map(
           (r) => ScanResultTile(
-            result: r,
-            onTap: () => onConnectPressed(r.device),
-          ),
-        )
+        result: r,
+        onTap: () => onConnectPressed(r.device),
+      ),
+    )
         .toList();
   }
 
@@ -156,12 +173,13 @@ class _ScanScreenState extends State<ScanScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Find Devices'),
-          backgroundColor: Colors.grey[900], // Darker app bar
+          backgroundColor: Colors.grey[900],
         ),
         body: RefreshIndicator(
           onRefresh: onRefresh,
           child: ListView(
             children: <Widget>[
+              ..._buildConnectedDeviceTile(context),
               ..._buildSystemDeviceTiles(context),
               ..._buildScanResultTiles(context),
             ],

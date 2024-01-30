@@ -22,6 +22,7 @@ app_main()
     }
     ESP_ERROR_CHECK(ret);
 
+    //app_main_zb();
     wifi_init();
     init_ble();
     /*int i = wifi_connect();
@@ -42,7 +43,6 @@ app_main()
         //ESP_LOGI(TAG, "lasdlk");
         //vTaskDelay(1000 / portTICK_PERIOD_MS);
         wifi_connect();
-        
     }
     // Additional application code goes here
 }

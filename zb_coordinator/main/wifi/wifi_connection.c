@@ -16,6 +16,7 @@
 
 #include "wifi_custom.h"
 #include "ble_custom.h"
+#include "zb_custom.h"
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
@@ -204,7 +205,7 @@ int wifi_connect()
     ESP_LOGI(TAG, "Waiting for WiFi credentials...");
     xSemaphoreTake(wifiCredentialsSemaphore, portMAX_DELAY);
     ESP_LOGI(TAG, "Got WiFi credentials");
-    
+
     if (!wifi_initialized) {
         ESP_LOGE(TAG, "WiFi not initialized");
         return -1;
@@ -237,6 +238,7 @@ int wifi_connect()
     {
         ESP_LOGI(TAG, "connected to ap SSID:%s password:%s", wifi_config.sta.ssid, wifi_config.sta.password);
         //send_confirmation("CONNECTED");  // Send confirmation to client
+        //app_main_zb();
         return 1;
     }
     else if (bits & WIFI_FAIL_BIT)
