@@ -12,6 +12,9 @@ import '../widgets/system_device_tile.dart';
 import '../widgets/scan_result_tile.dart';
 import '../utils/extra.dart';
 
+import 'package:provider/provider.dart';
+import '../state/esp32_provider.dart';
+
 class ScanScreen extends StatefulWidget {
   const ScanScreen({Key? key}) : super(key: key);
 
@@ -23,7 +26,7 @@ class _ScanScreenState extends State<ScanScreen> {
   List<BluetoothDevice> _systemDevices = [];
   List<ScanResult> _scanResults = [];
   bool _isScanning = false;
-  BluetoothDevice? _connectedDevice;
+  bool _isDeviceConnected = false; // Changed to bool
   late StreamSubscription<List<ScanResult>> _scanResultsSubscription;
   late StreamSubscription<bool> _isScanningSubscription;
 
@@ -46,6 +49,10 @@ class _ScanScreenState extends State<ScanScreen> {
         setState(() {});
       }
     });
+
+    final esp32Provider = Provider.of<ESP32Provider>(context, listen: false);
+    _isDeviceConnected = esp32Provider.state.isBLEConnected; // Use bool value
+
   }
 
   @override
@@ -55,8 +62,12 @@ class _ScanScreenState extends State<ScanScreen> {
     super.dispose();
   }
 
+  void _handleBLEConnection(BuildContext context, bool isConnected, BluetoothDevice? device) {
+    Provider.of<ESP32Provider>(context, listen: false).updateBLEConnectionStatus(isConnected, device);
+  }
+
   Future onScanPressed() async {
-    if (_connectedDevice != null) return;  // Do not scan if a device is connected
+    if (_isDeviceConnected) return;  // Do not scan if a device is connected
 
     try {
       _systemDevices = await FlutterBluePlus.systemDevices;
@@ -86,7 +97,8 @@ class _ScanScreenState extends State<ScanScreen> {
     device.connectAndUpdateStream().catchError((e) {
       Snackbar.show(ABC.c, prettyException("Connect Error:", e), success: false);
     }).then((_) {
-      setState(() => _connectedDevice = device);
+      setState(() => _isDeviceConnected = true); // Update bool value
+      _handleBLEConnection(context, true, device);
     });
     MaterialPageRoute route = MaterialPageRoute(
         builder: (context) => WifiListScreen(device: device),
@@ -105,7 +117,7 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   Widget buildScanButton(BuildContext context) {
-    if (_connectedDevice != null) return SizedBox();  // Hide scan button when a device is connected
+    if (_isDeviceConnected) return SizedBox(); // Changed condition to use bool
 
     if (FlutterBluePlus.isScanningNow) {
       return FloatingActionButton(
@@ -118,7 +130,6 @@ class _ScanScreenState extends State<ScanScreen> {
           child: const Text("SCAN"), onPressed: onScanPressed);
     }
   }
-
 
   List<Widget> _buildSystemDeviceTiles(BuildContext context) {
     return _systemDevices
@@ -137,18 +148,21 @@ class _ScanScreenState extends State<ScanScreen> {
         .toList();
   }
 
+  // Update _buildConnectedDeviceTile to reflect the boolean status
+  // and show the connected device if it's available from the provider
   List<Widget> _buildConnectedDeviceTile(BuildContext context) {
-    if (_connectedDevice != null) {
+    final esp32Provider = Provider.of<ESP32Provider>(context);
+    if (_isDeviceConnected && esp32Provider.state.connectedDevice != null) {
       return [
         SystemDeviceTile(
-          device: _connectedDevice!,
+          device: esp32Provider.state.connectedDevice!,
           onOpen: () => Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => WifiListScreen(device: _connectedDevice!),
+              builder: (context) => WifiListScreen(device: esp32Provider.state.connectedDevice!),
               settings: const RouteSettings(name: '/WifiListScreen'),
             ),
           ),
-          onConnect: () => onConnectPressed(_connectedDevice!),
+          onConnect: () => onConnectPressed(esp32Provider.state.connectedDevice!),
         )
       ];
     }

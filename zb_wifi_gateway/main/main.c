@@ -76,6 +76,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         msg_id = esp_mqtt_client_subscribe(client, "topic/lights/toggle", 0);
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
+        esp_mqtt_client_publish(client, "test/topic", "aaaa", 0, 1, 0);
+
         //msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 1);
         //ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/state/esp32_provider.dart';
+import 'package:provider/provider.dart';
 
 class MainControlScreen extends StatefulWidget {
   @override
@@ -10,12 +12,40 @@ class _MainControlScreenState extends State<MainControlScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final esp32State = Provider.of<ESP32Provider>(context).state;
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Main Screen'),
+        backgroundColor: Colors.grey[900], // Darker app bar
       ),
       body: Column(
         children: [
+          // Connection buttons
+          // Connection Buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: Icon(Icons.wifi,
+                    color: esp32State.isWiFiConnected ? Colors.green : Colors.grey),
+                onPressed: () {
+                  // Logic to handle WiFi connection
+                },
+                iconSize: 40.0,
+              ),
+              SizedBox(width: 20),
+              IconButton(
+                icon: Icon(Icons.bluetooth,
+                    color: esp32State.isBLEConnected ? Colors.green : Colors.grey),
+                onPressed: () {
+                  // Logic to handle Bluetooth connection
+                },
+                iconSize: 40.0,
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
           // Sensor Readings Section
           Expanded(
             flex: 1, // Adjust flex ratio to change the size of sections

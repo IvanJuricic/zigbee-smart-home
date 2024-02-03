@@ -2,6 +2,18 @@
   "files.associations": {
     "stdio.h": "c",
     "wifi_custom.h": "c",
-    "xiosbase": "c"
+    "xiosbase": "c",
+    "ble_custom.h": "c",
+    "esp_zb_switch.h": "c",
+    "esp_zigbee_core.h": "c",
+    "switch_driver.h": "c",
+    "inttypes.h": "c",
+    "time.h": "c",
+    "iterator": "c",
+    "xhash": "c",
+    "xutility": "c",
+    "zb_custom.h": "c",
+    "mqtt_custom.h": "c",
+    "example_common_private.h": "c"
   }
 }

@@ -8,6 +8,9 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../main.dart';
 import '../utils/snackbar.dart';
 
+import 'package:provider/provider.dart';
+import '../state/esp32_provider.dart';
+
 class WifiListScreen extends StatefulWidget {
   final BluetoothDevice device;
 
@@ -36,6 +39,7 @@ class _WifiListScreenState extends State<WifiListScreen> {
     super.initState();
     _setupConnectionListener();
     if (_isConnected == false) _connectToDevice();
+    _handleWiFiConnection(context, _isConnected);
     _getWifiConnectionStatus();
   }
 
@@ -84,6 +88,10 @@ class _WifiListScreenState extends State<WifiListScreen> {
         });
   }
 
+  void _handleWiFiConnection(BuildContext context, bool isConnected) {
+    Provider.of<ESP32Provider>(context, listen: false).updateWiFiConnectionStatus(isConnected);
+  }
+
   Future _sendCredentials(String ssid, String password) async {
     // Combine SSID and password, you might want a specific protocol or format
     String combinedCredentials = '$ssid:$password';
@@ -123,6 +131,54 @@ class _WifiListScreenState extends State<WifiListScreen> {
     await _confirmationListener();
   }
 
+  Future _confirmationListener() async {
+    try {
+      for (var characteristic in _characteristics) {
+        if (["4840", "5210"].contains(characteristic.uuid.toString().toUpperCase())) {
+          await characteristic.setNotifyValue(true);
+          final subscription = characteristic.lastValueStream.listen(
+                (value) => _handleCharacteristicValue(value),
+          );
+          widget.device.cancelWhenDisconnected(subscription);
+        }
+      }
+    } catch (e) {
+      debugPrint("Error listening for confirmation: $e");
+    }
+  }
+
+  void _handleCharacteristicValue(List<int> value) {
+    if (value.isNotEmpty) {
+      String confirmation = utf8.decode(value);
+      log("Received confirmation: $confirmation");
+      if (["CONNECTED", "DISCONNECTED"].contains(confirmation)) {
+        bool isConnected = confirmation == "CONNECTED";
+        debugPrint("AAAAAAAAAAAAAAAAAA: $isConnected");
+        _updateConnectionStatus(isConnected);
+      } else {
+        debugPrint("Unknown confirmation received: $confirmation");
+      }
+    }
+  }
+
+  void _updateConnectionStatus(bool isConnected) {
+    if (mounted) {
+      setState(() => _isWifiConnected = isConnected);
+
+      _handleWiFiConnection(context, _isWifiConnected);
+
+      String message = isConnected ? "Connected to Wi-Fi" : "Disconnected from Wi-Fi";
+      Snackbar.show(ABC.c, message, success: true);
+
+      if (isConnected) {
+        // Navigate only if the widget is still mounted
+        //Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    }
+  }
+
+
+  /*
   Future _confirmationListener() async {
     try {
       for (var characteristic in _characteristics) {
@@ -200,6 +256,8 @@ class _WifiListScreenState extends State<WifiListScreen> {
       debugPrint("Error listening for confirmation: $e");
     }
   }
+
+   */
 
   Future<void> _getWifiAPList() async {
     if (mounted) {
@@ -363,7 +421,8 @@ class _WifiListScreenState extends State<WifiListScreen> {
     } catch (e) {
       debugPrint("Error discovering services: $e");
     } finally {
-      setState(() => _isWifiConnected = false);
+      setState(() => _isWifiConnected = false
+      );
       _getWifiAPList(); // Fetch the list again after disconnecting
     }
   }

@@ -168,7 +168,8 @@ static int gatt_svr_chr_disconnect_wifi(uint16_t conn_handle, uint16_t attr_hand
 
     ESP_LOGI(TAG, "Disconnecting from wifi");
     // Disconnect from wifi
-    wifi_disconnect();
+    //wifi_disconnect();
+    ESP_ERROR_CHECK(example_wifi_sta_do_disconnect());
 
     // Send confirmation to client
     send_confirmation("DISCONNECTED");
@@ -218,6 +219,7 @@ gatt_svr_chr_wifi_credentials(uint16_t conn_handle, uint16_t attr_handle,
         _password = 0;
 
         xSemaphoreGive(wifiCredentialsSemaphore);
+        //wifi_set_config();
     }
 
     return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;

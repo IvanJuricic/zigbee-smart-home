@@ -6,6 +6,7 @@ idf_component_register(
     "bt/ble_init.c"
     "bt/gatt_svr.c"
     "wifi/wifi_connection.c"
+    "mqtt/mqtt.c"
     INCLUDE_DIRS 
     "."
     "../include"

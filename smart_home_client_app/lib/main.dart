@@ -7,11 +7,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/main_control_screen.dart';
 import 'package:flutter_application_1/screens/wifi_list_screen.dart';
+import 'package:flutter_application_1/state/esp32_provider.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import 'screens/bluetooth_off_screen.dart';
 import 'screens/scan_screen.dart';
 import 'screens/menu_screen.dart';
+import 'state/esp32_provider.dart';
+import 'package:provider/provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -25,17 +28,21 @@ class BLEApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: navigatorKey,
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
+    return ChangeNotifierProvider(
+      create: (context) => ESP32Provider(),
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
+        title: 'Flutter Demo',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+        ),
+        routes: {
+          '/scanScreen': (context) => const ScanScreen(),
+          '/mainControlScreen': (context) => MainControlScreen(),
+          //'/wifiListScreen': (context) => const WifiListScreen(),
+        },
+        home: const MenuScreen(), // Your MenuScreen is the home screen
       ),
-      routes: {
-        '/scanScreen': (context) => const ScanScreen(),
-        '/mainControlScreen': (context) => MainControlScreen(),
-      },
-      home: const MenuScreen(), // Your MenuScreen is the home screen
     );
   }
 }
