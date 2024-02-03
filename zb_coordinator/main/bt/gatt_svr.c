@@ -39,6 +39,10 @@ static int
 gatt_svr_chr_get_wifi_status(uint16_t conn_handle, uint16_t attr_handle,
                                 struct ble_gatt_access_ctxt *ctxt, void *arg);
 
+static int
+gatt_svr_chr_toggle_light(uint16_t conn_handle, uint16_t attr_handle,
+                                struct ble_gatt_access_ctxt *ctxt, void *arg);
+
 static const 
 struct ble_gatt_svc_def gatt_svr_svcs[] = {
     {
@@ -80,6 +84,11 @@ struct ble_gatt_svc_def gatt_svr_svcs[] = {
                 .access_cb = gatt_svr_chr_disconnect_wifi,
                 .val_handle = &wifi_status_handle,
                 .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
+            },{
+                /* Characteristic: Toggle light */
+                .uuid = BLE_UUID16_DECLARE(GATT_TOGGLE_LIGHT),
+                .access_cb = gatt_svr_chr_toggle_light,
+                .flags = BLE_GATT_CHR_F_WRITE,
             },{
                 0, /* No more characteristics in this service */
             },
@@ -173,6 +182,31 @@ static int gatt_svr_chr_disconnect_wifi(uint16_t conn_handle, uint16_t attr_hand
 
     // Send confirmation to client
     send_confirmation("DISCONNECTED");
+
+    return 0;
+}
+
+
+static int
+gatt_svr_chr_toggle_light(uint16_t conn_handle, uint16_t attr_handle,
+                                struct ble_gatt_access_ctxt *ctxt, void *arg)
+{
+    printf("AAAAAAAAAAAAAAAA");
+    // Check uuid and toggle light using function from app_main_zb.c
+    uint16_t uuid, len;
+    int rc;
+
+    uuid = ble_uuid_u16(ctxt->chr->uuid);
+    len = ctxt->om->om_len;
+
+    buff = malloc(sizeof(char) * (len + 1));
+    if (uuid == GATT_TOGGLE_LIGHT)
+    {
+        printf("Toggle!");
+    }
+
+    // Send confirmation to client
+    send_confirmation("LIGHT TOGGLED");
 
     return 0;
 }

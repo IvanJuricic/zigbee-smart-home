@@ -37,6 +37,7 @@
 #define GATT_WIFI_AP_LIST                       0x5040
 #define GATT_WIFI_DISCONNECT                    0x5110
 #define GATT_WIFI_GET_STATUS                    0x5210
+#define GATT_TOGGLE_LIGHT                       0x6010
 
 extern uint16_t hrs_hrm_handle;
 extern uint16_t conn_handle_global;

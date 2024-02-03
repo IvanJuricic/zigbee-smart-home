@@ -1,6 +1,10 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/state/esp32_provider.dart';
 import 'package:provider/provider.dart';
+
+import '../state/esp32_state.dart';
 
 class MainControlScreen extends StatefulWidget {
   @override
@@ -11,12 +15,27 @@ class _MainControlScreenState extends State<MainControlScreen> {
   bool _lightIsOn = false; // This variable keeps track of the light's state
 
   @override
-  Widget build(BuildContext context) {
-    final esp32State = Provider.of<ESP32Provider>(context).state;
+  void initState() {
+    super.initState();
+  }
 
+  void _toggleLight(bool value) {
+    log("Toggle light: $value");
+    if (mounted) {
+      Provider.of<ESP32Provider>(context, listen: false).state.writeLightCharacteristic(value).then((_) {
+        setState(() {
+          _lightIsOn = value;
+        });
+      });
+    }
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Main Screen'),
+        title: const Text('Main Screen'),
         backgroundColor: Colors.grey[900], // Darker app bar
       ),
       body: Column(
@@ -28,7 +47,7 @@ class _MainControlScreenState extends State<MainControlScreen> {
             children: [
               IconButton(
                 icon: Icon(Icons.wifi,
-                    color: esp32State.isWiFiConnected ? Colors.green : Colors.grey),
+                    color: Provider.of<ESP32Provider>(context, listen: false).state.isWiFiConnected ? Colors.green : Colors.grey),
                 onPressed: () {
                   // Logic to handle WiFi connection
                 },
@@ -37,7 +56,7 @@ class _MainControlScreenState extends State<MainControlScreen> {
               SizedBox(width: 20),
               IconButton(
                 icon: Icon(Icons.bluetooth,
-                    color: esp32State.isBLEConnected ? Colors.green : Colors.grey),
+                    color: Provider.of<ESP32Provider>(context, listen: false).state.isBLEConnected ? Colors.green : Colors.grey),
                 onPressed: () {
                   // Logic to handle Bluetooth connection
                 },
@@ -98,12 +117,7 @@ class _MainControlScreenState extends State<MainControlScreen> {
                   ),
                   Switch(
                     value: _lightIsOn,
-                    onChanged: (bool value) {
-                      setState(() {
-                        _lightIsOn = value;
-                        // Add logic to send command to ESP32 to toggle lights
-                      });
-                    },
+                    onChanged: _toggleLight,
                   ),
                 ],
               ),

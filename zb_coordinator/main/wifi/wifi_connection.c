@@ -258,7 +258,7 @@ static void example_handler_on_sta_got_ipv6(void *arg, esp_event_base_t event_ba
 // Function that waits for wifiCredentials to be set and sets the config
 void wifi_set_config()
 {
-    // Wait for the semaphore to be set by the MQTT task
+    // Wait for the semaphore to be set by the Bluetooth task
     xSemaphoreTake(wifiCredentialsSemaphore, portMAX_DELAY);
     ESP_LOGI(TAG, "WiFi credentials received: %s, %s", wifiCredentials.ssid, wifiCredentials.password);
     //strcpy((char *)wifiCredentials.ssid, "Dellboy");

@@ -19,5 +19,10 @@ class ESP32Provider with ChangeNotifier {
     notifyListeners();
   }
 
+  void updateCharacteristics(List<BluetoothCharacteristic> newCharacteristics) {
+    _state.updateCharacteristics(newCharacteristics);
+    notifyListeners();
+  }
+
 // ... other methods to update the state
 }

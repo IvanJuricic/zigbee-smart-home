@@ -41,6 +41,7 @@ class _WifiListScreenState extends State<WifiListScreen> {
     if (_isConnected == false) _connectToDevice();
     _handleWiFiConnection(context, _isConnected);
     _getWifiConnectionStatus();
+    // Add characteristics to eps32state
   }
 
   void _promptForPassword(String ssid) {
@@ -310,7 +311,9 @@ class _WifiListScreenState extends State<WifiListScreen> {
           _characteristics.add(characteristic);
         }
       }
-
+      Future.delayed(Duration.zero, (){
+        Provider.of<ESP32Provider>(context, listen: false).updateCharacteristics(_characteristics);
+      });
       //if (!_isWifiConnected) _getWifiAPList();
     } catch (e) {
       debugPrint("Error discovering services: $e");

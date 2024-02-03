@@ -218,7 +218,7 @@ void bluetooth_task(void *pvParameter) {
     }
 }
 
-void mqtt_publish_task(void *pvParameter) {
+/*void mqtt_publish_task(void *pvParameter) {
     while (1) {
         // Wait for MQTT to be ready
         xSemaphoreTake(mqttPublishSemaphore, portMAX_DELAY);
@@ -236,7 +236,7 @@ void mqtt_publish_task(void *pvParameter) {
 
         vTaskDelay(pdMS_TO_TICKS(1000)); // Delay between publishing attempts
     }
-}
+}*/
 
 void mqtt_init_task(void *pvParameter) {
     // Initialize and handle MQTT
@@ -300,7 +300,7 @@ app_main()
     xTaskCreate(&wifi_task, "wifi_mqtt_task", 4096, NULL, 5, NULL);
     xTaskCreate(&mqtt_init_task, "mqtt_task", 4096, NULL, 4, NULL);
     xTaskCreate(&bluetooth_task, "bluetooth_task", 2048, NULL, 4, NULL);
-    xTaskCreate(&mqtt_publish_task, "bluetooth_task", 2048, NULL, 4, NULL);
+    //xTaskCreate(&mqtt_publish_task, "bluetooth_task", 2048, NULL, 4, NULL);
     // Additional application code goes here
 }
 

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -63,6 +64,7 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   void _handleBLEConnection(BuildContext context, bool isConnected, BluetoothDevice? device) {
+    log("Pisem da je spojen bt");
     Provider.of<ESP32Provider>(context, listen: false).updateBLEConnectionStatus(isConnected, device);
   }
 
@@ -152,17 +154,17 @@ class _ScanScreenState extends State<ScanScreen> {
   // and show the connected device if it's available from the provider
   List<Widget> _buildConnectedDeviceTile(BuildContext context) {
     final esp32Provider = Provider.of<ESP32Provider>(context);
-    if (_isDeviceConnected && esp32Provider.state.connectedDevice != null) {
+    if (_isDeviceConnected && esp32Provider.state.device != null) {
       return [
         SystemDeviceTile(
-          device: esp32Provider.state.connectedDevice!,
+          device: esp32Provider.state.device!,
           onOpen: () => Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => WifiListScreen(device: esp32Provider.state.connectedDevice!),
+              builder: (context) => WifiListScreen(device: esp32Provider.state.device!),
               settings: const RouteSettings(name: '/WifiListScreen'),
             ),
           ),
-          onConnect: () => onConnectPressed(esp32Provider.state.connectedDevice!),
+          onConnect: () => onConnectPressed(esp32Provider.state.device!),
         )
       ];
     }
