@@ -33,6 +33,10 @@ class _MainControlScreenState extends State<MainControlScreen> {
 
   @override
   Widget build(BuildContext context) {
+    bool isBluetoothAvailable = Provider.of<ESP32Provider>(context, listen: false).state.isBLEConnected;
+    bool isWifiAvailable = Provider.of<ESP32Provider>(context, listen: false).state.isWiFiConnected;
+    // Determine which button should be selected
+    List<bool> _selections = [isBluetoothAvailable && !isWifiAvailable, isWifiAvailable && !isBluetoothAvailable];
     return Scaffold(
       appBar: AppBar(
         title: const Text('Main Screen'),
@@ -42,27 +46,30 @@ class _MainControlScreenState extends State<MainControlScreen> {
         children: [
           // Connection buttons
           // Connection Buttons
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: Icon(Icons.wifi,
-                    color: Provider.of<ESP32Provider>(context, listen: false).state.isWiFiConnected ? Colors.green : Colors.grey),
-                onPressed: () {
-                  // Logic to handle WiFi connection
-                },
-                iconSize: 40.0,
-              ),
-              SizedBox(width: 20),
-              IconButton(
-                icon: Icon(Icons.bluetooth,
-                    color: Provider.of<ESP32Provider>(context, listen: false).state.isBLEConnected ? Colors.green : Colors.grey),
-                onPressed: () {
-                  // Logic to handle Bluetooth connection
-                },
-                iconSize: 40.0,
-              ),
-            ],
+          // Toggle between Bluetooth and WiFi
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: ToggleButtons(
+              children: <Widget>[
+                Icon(Icons.bluetooth, color: isBluetoothAvailable ? (_selections[0] ? Colors.green : null) : Colors.grey),
+                Icon(Icons.wifi, color: isWifiAvailable ? (_selections[1] ? Colors.green : null) : Colors.grey),
+              ],
+              isSelected: _selections,
+              onPressed: (int index) {
+                setState(() {
+                  if ((index == 0 && isBluetoothAvailable) || (index == 1 && isWifiAvailable)) {
+                    for (int buttonIndex = 0; buttonIndex < _selections.length; buttonIndex++) {
+                      _selections[buttonIndex] = buttonIndex == index;
+                    }
+                  }
+                });
+                // Add your logic to handle Bluetooth or WiFi selection
+              },
+              fillColor: Colors.lightGreenAccent,
+              selectedBorderColor: Colors.green,
+              borderColor: Colors.grey,
+              constraints: BoxConstraints(minWidth: 56, minHeight: 56), // Making buttons larger
+            ),
           ),
           SizedBox(height: 20),
           // Sensor Readings Section

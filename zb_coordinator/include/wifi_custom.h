@@ -114,7 +114,7 @@ typedef struct {
 extern WifiCredentials wifiCredentials;
 extern SemaphoreHandle_t wifiCredentialsSemaphore;
 
-void init_credentials_semaphore();
+void init_semaphores();
 int wifi_init_sta(void);
 void wifi_deinit_sta(void);
 void init_wifi(void);

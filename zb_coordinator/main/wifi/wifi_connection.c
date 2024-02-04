@@ -26,7 +26,7 @@ static const char *TAG = "WiFi Sta";
 static int s_retry_num = 0;
 
 WifiCredentials wifiCredentials;  // Define the global variable
-SemaphoreHandle_t wifiCredentialsSemaphore, mqttStartSemaphore, mqttPublishSemaphore;
+SemaphoreHandle_t wifiCredentialsSemaphore, mqttStartSemaphore, mqttPublishSemaphore, confirmationSemaphore;
 
 static esp_netif_t *sta_handler = NULL;
 static esp_event_handler_instance_t instance_any_id;
@@ -105,6 +105,7 @@ init_credentials_semaphore()
     wifiCredentialsSemaphore = xSemaphoreCreateBinary();
     mqttStartSemaphore = xSemaphoreCreateBinary();
     mqttPublishSemaphore = xSemaphoreCreateBinary();
+    confirmationSemaphore = xSemaphoreCreateBinary();
 
     if (wifiCredentialsSemaphore == NULL || mqttStartSemaphore == NULL || mqttPublishSemaphore == NULL) {
         // Handle semaphore creation failure
@@ -143,6 +144,7 @@ wifi_config_t wifi_config;
 //static const char *TAG = "example_connect";
 static esp_netif_t *s_example_sta_netif = NULL;
 static SemaphoreHandle_t s_semph_get_ip_addrs = NULL;
+
 #if CONFIG_EXAMPLE_CONNECT_IPV6
 static SemaphoreHandle_t s_semph_get_ip6_addrs = NULL;
 #endif
@@ -210,8 +212,8 @@ static void example_handler_on_wifi_disconnect(void *arg, esp_event_base_t event
 static void example_handler_on_wifi_connect(void *esp_netif, esp_event_base_t event_base,
                             int32_t event_id, void *event_data)
 {
-    send_confirmation("CONNECTED");
     wifi_connected = true;
+    xSemaphoreGive(confirmationSemaphore);
 #if CONFIG_EXAMPLE_CONNECT_IPV6
     esp_netif_create_ip6_linklocal(esp_netif);
 #endif // CONFIG_EXAMPLE_CONNECT_IPV6

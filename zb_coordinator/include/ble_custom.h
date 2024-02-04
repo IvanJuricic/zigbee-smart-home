@@ -45,6 +45,8 @@ extern uint16_t conn_handle_global;
 struct ble_hs_cfg;
 struct ble_gatt_register_ctxt;
 
+extern SemaphoreHandle_t confirmationSemaphore;
+
 void gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg);
 int gatt_svr_init(void);
 void init_ble();

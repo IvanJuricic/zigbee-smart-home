@@ -14,6 +14,7 @@
     "xutility": "c",
     "zb_custom.h": "c",
     "mqtt_custom.h": "c",
-    "example_common_private.h": "c"
+    "example_common_private.h": "c",
+    "esp_zigbee_ha_standard.h": "c"
   }
 }

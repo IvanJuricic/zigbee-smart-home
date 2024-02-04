@@ -184,9 +184,9 @@ static void esp_zb_task(void *pvParameters)
     esp_zb_main_loop_iteration();
 }
 
-static void toggle_lights() {
+void toggle_lights() {
     esp_zb_zcl_on_off_cmd_t cmd_req;
-    ESP_EARLY_LOGI(TAG, "send 'on_off toggle' command");
+    ESP_EARLY_LOGI(TAG, "AAAAAAAAAAAsend 'on_off toggle' command");
     for(int i = 0; i < num_devices; i++) {
         cmd_req.zcl_basic_cmd.dst_addr_u.addr_short = on_off_light[i].short_addr;
         cmd_req.zcl_basic_cmd.dst_endpoint = on_off_light[i].endpoint;

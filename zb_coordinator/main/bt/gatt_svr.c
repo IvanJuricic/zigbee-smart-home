@@ -1,5 +1,8 @@
-#include "ble_custom.h"
 #include "wifi_custom.h"
+#include "ble_custom.h"
+#include "zb_custom.h"
+
+#include "modlog/modlog.h"
 
 #define MIN_REQUIRED_MBUF         2 /* Assuming payload of 500Bytes and each mbuf can take 292Bytes.  */
 
@@ -202,7 +205,7 @@ gatt_svr_chr_toggle_light(uint16_t conn_handle, uint16_t attr_handle,
     buff = malloc(sizeof(char) * (len + 1));
     if (uuid == GATT_TOGGLE_LIGHT)
     {
-        printf("Toggle!");
+        toggle_lights();
     }
 
     // Send confirmation to client
@@ -350,8 +353,8 @@ void
 gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg)
 {
     char buf[BLE_UUID_STR_LEN];
-
-    switch (ctxt->op) {
+/*
+switch (ctxt->op) {
     case BLE_GATT_REGISTER_OP_SVC:
         MODLOG_DFLT(DEBUG, "registered service %s with handle=%d\n",
                     ble_uuid_to_str(ctxt->svc.svc_def->uuid, buf),
@@ -376,6 +379,8 @@ gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg)
         assert(0);
         break;
     }
+*/
+    
 }
 
 int
