@@ -1,4 +1,5 @@
 #include "mqtt_custom.h"
+#include "zb_custom.h"
 
 static const char *TAG = "MQTT_CLIENT";
 
@@ -30,7 +31,12 @@ mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, 
         msg_id = esp_mqtt_client_subscribe(client, "test/topic", 0);
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
-        msg_id = esp_mqtt_client_publish(client, "test/topic", "data_3", 0, 1, 0);
+        msg_id = esp_mqtt_client_subscribe(client, "light/toggle", 0);
+        ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
+
+        msg_id = esp_mqtt_client_subscribe(client, "hub/status", 0);
+        ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
+
         //ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
 
         //msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 1);
@@ -41,6 +47,8 @@ mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, 
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
+        // Destroy the client if disconnected
+        esp_mqtt_client_destroy(client);
         break;
 
     case MQTT_EVENT_SUBSCRIBED:
@@ -58,6 +66,10 @@ mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, 
         ESP_LOGI(TAG, "MQTT_EVENT_DATA");
         printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
         printf("DATA=%.*s\r\n", event->data_len, event->data);
+        if (strncmp(event->topic, "light/toggle", event->topic_len) == 0) {
+            toggle_lights();
+            printf("Light toggledAAAAAAAAAAAAAAAAAAAAAA\n");
+        }
         break;
     case MQTT_EVENT_ERROR:
         ESP_LOGI(TAG, "MQTT_EVENT_ERROR");

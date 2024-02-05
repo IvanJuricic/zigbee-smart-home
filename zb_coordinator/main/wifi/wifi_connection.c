@@ -99,7 +99,7 @@ get_wifi_status()
 }
 
 void
-init_credentials_semaphore()
+init_semaphores()
 {
     // Create a binary semaphore
     wifiCredentialsSemaphore = xSemaphoreCreateBinary();

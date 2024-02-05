@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/state/esp32_provider.dart';
 import 'package:provider/provider.dart';
 
+import '../state/MQTTManager.dart';
 import '../state/esp32_state.dart';
 
 class MainControlScreen extends StatefulWidget {
@@ -13,30 +14,56 @@ class MainControlScreen extends StatefulWidget {
 
 class _MainControlScreenState extends State<MainControlScreen> {
   bool _lightIsOn = false; // This variable keeps track of the light's state
+  final MQTTManager _mqttManager = MQTTManager();
+
+  List<bool> _selections = [true, false]; // Initial selection - Bluetooth by default
 
   @override
   void initState() {
     super.initState();
+    _mqttManager.initializeMQTTClient();
+  }
+
+  @override
+  void dispose() {
+    _mqttManager.disposeMQTTClient();
+    super.dispose();
   }
 
   void _toggleLight(bool value) {
     log("Toggle light: $value");
-    if (mounted) {
-      Provider.of<ESP32Provider>(context, listen: false).state.writeLightCharacteristic(value).then((_) {
-        setState(() {
-          _lightIsOn = value;
+    if (_selections[0]) { // If Bluetooth is selected
+      if (mounted) {
+        Provider.of<ESP32Provider>(context, listen: false)
+            .state
+            .writeLightCharacteristic(value)
+            .then((_) {
+          setState(() {
+            _lightIsOn = value;
+          });
         });
+      }
+    } else if (_selections[1]) { // If WiFi (MQTT) is selected
+      String message = value ? "ON" : "OFF";
+      log("Publishing message: $message");
+      _mqttManager.publishMessage("client/toggle", message);
+      setState(() {
+        _lightIsOn = value;
       });
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
     bool isBluetoothAvailable = Provider.of<ESP32Provider>(context, listen: false).state.isBLEConnected;
     bool isWifiAvailable = Provider.of<ESP32Provider>(context, listen: false).state.isWiFiConnected;
-    // Determine which button should be selected
-    List<bool> _selections = [isBluetoothAvailable && !isWifiAvailable, isWifiAvailable && !isBluetoothAvailable];
+    // Determine which toggle button should be enabled and which should be selected
+    // If both are available, but neither is selected, default to selecting Bluetooth
+    if (isBluetoothAvailable && isWifiAvailable && !_selections[0] && !_selections[1]) {
+      _selections = [true, false];
+    } else {
+      _selections = [isBluetoothAvailable && _selections[0], isWifiAvailable && _selections[1]];
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('Main Screen'),
@@ -71,6 +98,7 @@ class _MainControlScreenState extends State<MainControlScreen> {
               constraints: BoxConstraints(minWidth: 56, minHeight: 56), // Making buttons larger
             ),
           ),
+
           SizedBox(height: 20),
           // Sensor Readings Section
           Expanded(

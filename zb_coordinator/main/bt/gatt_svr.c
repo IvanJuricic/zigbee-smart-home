@@ -194,15 +194,10 @@ static int
 gatt_svr_chr_toggle_light(uint16_t conn_handle, uint16_t attr_handle,
                                 struct ble_gatt_access_ctxt *ctxt, void *arg)
 {
-    printf("AAAAAAAAAAAAAAAA");
     // Check uuid and toggle light using function from app_main_zb.c
-    uint16_t uuid, len;
-    int rc;
+    uint16_t uuid;
 
     uuid = ble_uuid_u16(ctxt->chr->uuid);
-    len = ctxt->om->om_len;
-
-    buff = malloc(sizeof(char) * (len + 1));
     if (uuid == GATT_TOGGLE_LIGHT)
     {
         toggle_lights();
